@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Судебные связи</title>
+  <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <style>
+    #mynetwork {
+      width: 100%;
+      height: 90vh;
+      border: 1px solid lightgray;
+    }
+  </style>
+</head>
+<body>
+  <h2>Судебные связи из Google Таблицы</h2>
+  <div id="mynetwork"></div>
+
+  <script>
+    const sheetURL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRX6hJTahEv6QiPC7a0cd4GjktE4oj9VHidqANVRbdg15l6XExf5UTEvnKhZkA0ogXMF9Kiej2k-TzL/pubhtml";
+
+    Papa.parse(sheetURL, {
+      download: true,
+      header: true,
+      complete: function(results) {
+        const data = results.data;
+
+        const nodesMap = new Map();
+        const edges = [];
+
+        data.forEach(row => {
+          const judge = row["Судья"];
+          const defendant = row["Подсудимый"];
+          const prosecutor = row["Прокурор"];
+
+          if (!nodesMap.has(judge)) {
+            nodesMap.set(judge, { id: judge, label: judge, group: "Судья" });
+          }
+          if (!nodesMap.has(defendant)) {
+            nodesMap.set(defendant, { id: defendant, label: defendant, group: "Подсудимый" });
+          }
+          if (!nodesMap.has(prosecutor)) {
+            nodesMap.set(prosecutor, { id: prosecutor, label: prosecutor, group: "Прокурор" });
+          }
+
+          edges.push({ from: judge, to: defendant, label: "судит", arrows: "to" });
+          edges.push({ from: prosecutor, to: defendant, label: "обвиняет", arrows: "to" });
+        });
+
+        const container = document.getElementById("mynetwork");
+
+        const networkData = {
+          nodes: Array.from(nodesMap.values()),
+          edges: edges
+        };
+
+        const options = {
+          nodes: {
+            shape: "dot",
+            size: 18,
+            font: { size: 14 }
+          },
+          edges: {
+            arrows: { to: true },
+            font: { align: "middle" },
+            color: "gray"
+          },
+          groups: {
+            Судья: { color: { background: "#ffc107" } },
+            Подсудимый: { color: { background: "#f44336" } },
+            Прокурор: { color: { background: "#2196f3" } }
+          },
+          layout: {
+            hierarchical: {
+              enabled: true,
+              direction: "UD",
+              sortMethod: "directed"
+            }
+          },
+          physics: false
+        };
+
+        new vis.Network(container, networkData, options);
+      }
+    });
+  </script>
+</body>
+</html>
