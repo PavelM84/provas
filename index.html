@@ -1,117 +1,22 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8" />
-  <title>Генеалогическое древо: Судья → Подсудимый → Прокурор</title>
-  <script src="https://d3js.org/d3.v7.min.js"></script>
-  <style>
-    body { font-family: sans-serif; }
-    .node { cursor: pointer; }
-    .tooltip {
-      position: absolute;
-      text-align: center;
-      padding: 5px;
-      background: #fff;
-      border: 1px solid #ccc;
-      pointer-events: none;
-    }
-  </style>
+  <meta charset="UTF-8">
+  <title>Граф судей</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://apis.google.com/js/api.js"></script>
 </head>
 <body>
-  <h1>Судьи и их дела</h1>
-  <svg width="1200" height="800"></svg>
-  <div class="tooltip" style="display:none;"></div>
+  <h1>Судебные связи</h1>
 
-  <script>
-    const sheetURL = "https://docs.google.com/spreadsheets/d/1QboKxJA_rkU6HMy-L8Fm399O5qLNWgTNa_0VpP1slgM/gviz/tq?tqx=out:json";
+  <div>
+    <label>Фильтр по судье: <select id="judgeFilter"></select></label>
+    <label>Фильтр по подсудимому: <select id="defendantFilter"></select></label>
+  </div>
 
-    fetch(sheetURL)
-      .then(res => res.text())
-      .then(data => {
-        const json = JSON.parse(data.substring(47).slice(0, -2));
-        const rows = json.table.rows.map(r => r.c.map(c => c ? c.v : ""));
+  <div id="tree-container"></div>
 
-        // Преобразование данных в дерево
-        const treeData = { name: "Судьи", children: [] };
-        const map = {};
-
-        rows.forEach(([judge, defendant, prosecutor, photo]) => {
-          if (!map[judge]) {
-            const judgeNode = { name: judge, photo, children: [] };
-            map[judge] = judgeNode;
-            treeData.children.push(judgeNode);
-          }
-
-          const defendantNode = {
-            name: defendant,
-            children: [{ name: prosecutor }]
-          };
-
-          map[judge].children.push(defendantNode);
-        });
-
-        drawTree(treeData);
-      });
-
-    function drawTree(data) {
-      const svg = d3.select("svg"),
-            width = +svg.attr("width"),
-            height = +svg.attr("height"),
-            g = svg.append("g").attr("transform", "translate(40,0)");
-
-      const tree = d3.tree().size([height - 200, width - 200]);
-      const root = d3.hierarchy(data);
-      tree(root);
-
-      const link = g.selectAll(".link")
-        .data(root.links())
-        .enter().append("path")
-        .attr("class", "link")
-        .attr("fill", "none")
-        .attr("stroke", "#999")
-        .attr("stroke-width", 1.5)
-        .attr("d", d3.linkHorizontal()
-          .x(d => d.y)
-          .y(d => d.x));
-
-      const node = g.selectAll(".node")
-        .data(root.descendants())
-        .enter().append("g")
-        .attr("class", "node")
-        .attr("transform", d => `translate(${d.y},${d.x})`);
-
-      node.append("circle")
-        .attr("r", 6)
-        .attr("fill", "#69b3a2");
-
-      node.append("text")
-        .attr("dy", 3)
-        .attr("x", d => d.children ? -12 : 12)
-        .style("text-anchor", d => d.children ? "end" : "start")
-        .text(d => d.data.name);
-
-      const tooltip = d3.select(".tooltip");
-
-      node.on("mouseover", (event, d) => {
-        if (d.depth === 1 && d.data.photo) {
-          tooltip.style("display", "block")
-            .html(`<img src="${d.data.photo}" width="100"/><br>${d.data.name}`)
-            .style("left", `${event.pageX + 10}px`)
-            .style("top", `${event.pageY}px`);
-        }
-      });
-
-      node.on("mouseout", () => {
-        tooltip.style("display", "none");
-      });
-
-      node.on("click", (event, d) => {
-        if (d.depth === 1) {
-          alert("Переход к досье: " + d.data.name);
-          // позже здесь будет переход на отдельную страницу
-        }
-      });
-    }
-  </script>
+  <script src="gapi.js"></script>
+  <script src="script.js"></script>
 </body>
 </html>
