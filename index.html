@@ -2,65 +2,82 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Граф судей 321</title>
+  <title>Граф судей</title>
   <script src="https://unpkg.com/papaparse@5.4.1/papaparse.min.js"></script>
   <script src="https://unpkg.com/cytoscape@3.25.3/dist/cytoscape.min.js"></script>
   <style>
-    #cy { width: 100%; height: 90vh; display: block; border: 1px solid #ddd; }
+    #cy {
+      width: 100%;
+      height: 90vh;
+      display: block;
+      border: 1px solid #ddd;
+    }
   </style>
 </head>
 <body>
   <h2>Сетевая модель: судья → подсудимые → прокурор</h2>
   <div id="cy"></div>
-<script>
-  const sheetURL = "https://docs.google.com/spreadsheets/d/2PACX-1vRNNS-VsJ7KSx3Jd254ilRY3c_euqPClWolfduy1RPnpzghbtvoGAGdzP1ZsHyMbSfUXHxyp-0yB2a4/pubhtml/export?format=csv&gid";
-  
-  Papa.parse(sheetURL, {
-    download: true, header: true,
-    complete: results => initCytoscape(results.data)
-  });
+
+  <script>
+    const sheetURL = "https://docs.google.com/spreadsheets/d/1QboKxJA_rkU6HMy-L8Fm399O5qLNWgTNa_0VpP1slgM/export?format=csv&gid=0";
+
+    Papa.parse(sheetURL, {
+      download: true,
+      header: true,
+      complete: results => initCytoscape(results.data)
+    });
 
     function initCytoscape(rows) {
       const nodes = [], edges = [];
       const added = new Set();
 
       rows.forEach(r => {
-const roles = [
-  { role: "Судья", name: r["Судья"], photo: r["Фото судьи URL"] },
-  { role: "Подсудимый", name: r["Подсудимый"], photo: r["Фото подсудимого URL"] },
-  { role: "Прокурор", name: r["Прокурор"], photo: r["Фото прокурора URL"] || "" }
-];
+        // Пропускаем пустые строки
+        if (!r["Судья"] && !r["Подсудимый"]) return;
 
-        roles.forEach(({role, name, photo}) => {
+        const roles = [
+          { role: "Судья", name: r["Судья"], photo: r["Фото судьи URL"] },
+          { role: "Подсудимый", name: r["Подсудимый"], photo: r["Фото подсудимого URL"] },
+          { role: "Прокурор", name: r["Прокурор"], photo: r["Фото прокурора URL"] || "" }
+        ];
+
+        roles.forEach(({ role, name, photo }) => {
           if (!name) return;
           const key = role + "|" + name;
           if (!added.has(key)) {
             added.add(key);
             nodes.push({
-              data: { id: key, label: name, role: role, photo: photo }
+              data: {
+                id: key,
+                label: name,
+                role: role,
+                photo: photo
+              }
             });
           }
         });
 
-        const j = r["Судья"] ? "Судья|" + r["Судья"] : null;
-        const d = r["Подсудимый"] ? "Подсудимый|" + r["Подсудимый"] : null;
-        const p = r["Прокурор"] ? "Прокурор|" + r["Прокурор"] : null;
+        const judge = r["Судья"] ? "Судья|" + r["Судья"] : null;
+        const def = r["Подсудимый"] ? "Подсудимый|" + r["Подсудимый"] : null;
+        const pros = r["Прокурор"] ? "Прокурор|" + r["Прокурор"] : null;
 
-        if (j && d) {
+        if (judge && def) {
           edges.push({
             data: {
-              id: j + "-" + d,
-              source: j, target: d,
-              label: `Судит: ${r["Статья"] || ""}, ${r["Год"] || ""}`
+              id: judge + "-" + def,
+              source: judge,
+              target: def,
+              label: `Статья: ${r["Статья"] || "?"}, ${r["Год"] || "?"}`
             }
           });
         }
 
-        if (p && d) {
+        if (pros && def) {
           edges.push({
             data: {
-              id: p + "-" + d,
-              source: p, target: d,
+              id: pros + "-" + def,
+              source: pros,
+              target: def,
               label: `Обвиняет`
             }
           });
@@ -71,36 +88,47 @@ const roles = [
         container: document.getElementById('cy'),
         elements: { nodes, edges },
         style: [
-          { selector: 'node', style: {
-            'background-color': '#999',
-            'background-fit': 'cover',
-            'background-image': 'data(photo)',
-            'label': 'data(label)',
-            'text-valign': 'bottom',
-            'text-margin-y': 4,
-            'font-size': 10,
-            'width': 60,
-            'height': 60,
-            'border-width': 3,
-            'border-color': '#fff',
-            'color': '#333'
-          }},
+          {
+            selector: 'node',
+            style: {
+              'background-color': '#999',
+              'background-image': 'data(photo)',
+              'background-fit': 'cover',
+              'label': 'data(label)',
+              'text-valign': 'bottom',
+              'text-margin-y': 4,
+              'font-size': 10,
+              'width': 60,
+              'height': 60,
+              'border-width': 3,
+              'border-color': '#fff',
+              'color': '#333'
+            }
+          },
           { selector: 'node[role="Судья"]', style: { 'border-color': '#f39c12' } },
           { selector: 'node[role="Прокурор"]', style: { 'border-color': '#2980b9' } },
           { selector: 'node[role="Подсудимый"]', style: { 'border-color': '#e74c3c' } },
-          { selector: 'edge', style: {
-            'curve-style': 'bezier',
-            'target-arrow-shape': 'triangle',
-            'target-arrow-color': '#888',
-            'line-color': '#888',
-            'label': 'data(label)',
-            'font-size': 9,
-            'text-background-color': '#fff',
-            'text-background-opacity': 0.7,
-            'text-background-padding': 2
-          }}
+          {
+            selector: 'edge',
+            style: {
+              'curve-style': 'bezier',
+              'target-arrow-shape': 'triangle',
+              'target-arrow-color': '#888',
+              'line-color': '#888',
+              'label': 'data(label)',
+              'font-size': 9,
+              'text-background-color': '#fff',
+              'text-background-opacity': 0.7,
+              'text-background-padding': 2
+            }
+          }
         ],
-        layout: { name: 'breadthfirst', directed: true, spacingFactor: 1.5, padding: 10 }
+        layout: {
+          name: 'breadthfirst',
+          directed: true,
+          spacingFactor: 1.5,
+          padding: 10
+        }
       });
 
       cy.on('tap', 'node', evt => {
