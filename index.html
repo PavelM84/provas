@@ -1,135 +1,115 @@
 <!DOCTYPE html>
-<html>
+<html lang="ru">
 <head>
-  <meta charset="UTF-8">
-  <title>Граф судей</title>
-  <script src="https://unpkg.com/cytoscape@3.25.3/dist/cytoscape.min.js"></script>
-  <script src="https://unpkg.com/papaparse@5.4.1/papaparse.min.js"></script>
+  <meta charset="UTF-8" />
+  <title>Генеалогическое древо: Судья → Подсудимый → Прокурор</title>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
   <style>
-    #cy {
-      width: 100%;
-      height: 90vh;
-      display: block;
-      border: 1px solid #ddd;
+    body { font-family: sans-serif; }
+    .node { cursor: pointer; }
+    .tooltip {
+      position: absolute;
+      text-align: center;
+      padding: 5px;
+      background: #fff;
+      border: 1px solid #ccc;
+      pointer-events: none;
     }
   </style>
 </head>
 <body>
-  <h2>Сетевая модель: судья → подсудимые → прокурор</h2>
-  <div id="cy"></div>
+  <h1>Судьи и их дела</h1>
+  <svg width="1200" height="800"></svg>
+  <div class="tooltip" style="display:none;"></div>
 
   <script>
-fetch("data.csv")
-  .then(r => r.text())
-  .then(csvText => {
-    const parsed = Papa.parse(csvText, { header: true });
-    initCytoscape(parsed.data);
-  })
-  .catch(err => console.error("Ошибка загрузки CSV:", err));
-      }
-    });
+    const sheetURL = "https://docs.google.com/spreadsheets/d/1QboKxJA_rkU6HMy-L8Fm399O5qLNWgTNa_0VpP1slgM/gviz/tq?tqx=out:json";
 
-    function initCytoscape(rows) {
-      const nodes = [], edges = [];
-      const added = new Set();
+    fetch(sheetURL)
+      .then(res => res.text())
+      .then(data => {
+        const json = JSON.parse(data.substring(47).slice(0, -2));
+        const rows = json.table.rows.map(r => r.c.map(c => c ? c.v : ""));
 
-      rows.forEach(r => {
-        if (!r["Судья"] && !r["Подсудимый"]) return;
+        // Преобразование данных в дерево
+        const treeData = { name: "Судьи", children: [] };
+        const map = {};
 
-        const roles = [
-          { role: "Судья", name: r["Судья"], photo: r["Фото судьи URL"] },
-          { role: "Подсудимый", name: r["Подсудимый"], photo: r["Фото подсудимого URL"] },
-          { role: "Прокурор", name: r["Прокурор"], photo: r["Фото прокурора URL"] || "" }
-        ];
-
-        roles.forEach(({ role, name, photo }) => {
-          if (!name) return;
-          const key = role + "|" + name;
-          if (!added.has(key)) {
-            added.add(key);
-            nodes.push({
-              data: { id: key, label: name, role: role, photo: photo }
-            });
+        rows.forEach(([judge, defendant, prosecutor, photo]) => {
+          if (!map[judge]) {
+            const judgeNode = { name: judge, photo, children: [] };
+            map[judge] = judgeNode;
+            treeData.children.push(judgeNode);
           }
+
+          const defendantNode = {
+            name: defendant,
+            children: [{ name: prosecutor }]
+          };
+
+          map[judge].children.push(defendantNode);
         });
 
-        const judge = r["Судья"] ? "Судья|" + r["Судья"] : null;
-        const def = r["Подсудимый"] ? "Подсудимый|" + r["Подсудимый"] : null;
-        const pros = r["Прокурор"] ? "Прокурор|" + r["Прокурор"] : null;
+        drawTree(treeData);
+      });
 
-        if (judge && def) {
-          edges.push({
-            data: {
-              id: judge + "-" + def,
-              source: judge,
-              target: def,
-              label: `Статья: ${r["Статья"] || "?"}, ${r["Год"] || "?"}`
-            }
-          });
-        }
+    function drawTree(data) {
+      const svg = d3.select("svg"),
+            width = +svg.attr("width"),
+            height = +svg.attr("height"),
+            g = svg.append("g").attr("transform", "translate(40,0)");
 
-        if (pros && def) {
-          edges.push({
-            data: {
-              id: pros + "-" + def,
-              source: pros,
-              target: def,
-              label: `Обвиняет`
-            }
-          });
+      const tree = d3.tree().size([height - 200, width - 200]);
+      const root = d3.hierarchy(data);
+      tree(root);
+
+      const link = g.selectAll(".link")
+        .data(root.links())
+        .enter().append("path")
+        .attr("class", "link")
+        .attr("fill", "none")
+        .attr("stroke", "#999")
+        .attr("stroke-width", 1.5)
+        .attr("d", d3.linkHorizontal()
+          .x(d => d.y)
+          .y(d => d.x));
+
+      const node = g.selectAll(".node")
+        .data(root.descendants())
+        .enter().append("g")
+        .attr("class", "node")
+        .attr("transform", d => `translate(${d.y},${d.x})`);
+
+      node.append("circle")
+        .attr("r", 6)
+        .attr("fill", "#69b3a2");
+
+      node.append("text")
+        .attr("dy", 3)
+        .attr("x", d => d.children ? -12 : 12)
+        .style("text-anchor", d => d.children ? "end" : "start")
+        .text(d => d.data.name);
+
+      const tooltip = d3.select(".tooltip");
+
+      node.on("mouseover", (event, d) => {
+        if (d.depth === 1 && d.data.photo) {
+          tooltip.style("display", "block")
+            .html(`<img src="${d.data.photo}" width="100"/><br>${d.data.name}`)
+            .style("left", `${event.pageX + 10}px`)
+            .style("top", `${event.pageY}px`);
         }
       });
 
-      const cy = cytoscape({
-        container: document.getElementById('cy'),
-        elements: { nodes, edges },
-        style: [
-          {
-            selector: 'node',
-            style: {
-              'background-color': '#999',
-              'background-image': 'data(photo)',
-              'background-fit': 'cover',
-              'label': 'data(label)',
-              'text-valign': 'bottom',
-              'text-margin-y': 4,
-              'font-size': 10,
-              'width': 60,
-              'height': 60,
-              'border-width': 3,
-              'border-color': '#fff',
-              'color': '#333'
-            }
-          },
-          { selector: 'node[role="Судья"]', style: { 'border-color': '#f39c12' } },
-          { selector: 'node[role="Прокурор"]', style: { 'border-color': '#2980b9' } },
-          { selector: 'node[role="Подсудимый"]', style: { 'border-color': '#e74c3c' } },
-          {
-            selector: 'edge',
-            style: {
-              'curve-style': 'bezier',
-              'target-arrow-shape': 'triangle',
-              'target-arrow-color': '#888',
-              'line-color': '#888',
-              'label': 'data(label)',
-              'font-size': 9,
-              'text-background-color': '#fff',
-              'text-background-opacity': 0.7,
-              'text-background-padding': 2
-            }
-          }
-        ],
-        layout: {
-          name: 'breadthfirst',
-          directed: true,
-          spacingFactor: 1.5,
-          padding: 10
-        }
+      node.on("mouseout", () => {
+        tooltip.style("display", "none");
       });
 
-      cy.on('tap', 'node', evt => {
-        const d = evt.target.data();
-        alert(`${d.role}:\n${d.label}`);
+      node.on("click", (event, d) => {
+        if (d.depth === 1) {
+          alert("Переход к досье: " + d.data.name);
+          // позже здесь будет переход на отдельную страницу
+        }
       });
     }
   </script>
