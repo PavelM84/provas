@@ -22,9 +22,7 @@
   <div id="cy"></div>
 
   <script>
-    const sheetURL = "https://docs.google.com/spreadsheets/d/1QboKxJA_rkU6HMy-L8Fm399O5qLNWgTNa_0VpP1slgM/export?format=csv&gid=0";
-
-  fetch("https://script.google.com/macros/s/AKfycbzrJjPnT1PgUCKe2BYHb6Genr1SM-LxfmDbeZbT0B9pFDZCEwavwywJ_g77HC2kC2na/exec")
+   fetch("https://script.google.com/macros/s/AKfycbzrJjPnT1PgUCKe2BYHb6Genr1SM-LxfmDbeZbT0B9pFDZCEwavwywJ_g77HC2kC2na/exec")
   .then(r => r.json())
   .then(rows => initCytoscape(rows));
 
