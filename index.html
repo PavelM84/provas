@@ -19,14 +19,13 @@
   <div id="cy"></div>
 
   <script>
-    Papa.parse("data.csv", {
-      download: true,
-      header: true,
-      complete: function(results) {
-        initCytoscape(results.data);
-      },
-      error: function(err) {
-        console.error("Ошибка загрузки CSV:", err);
+fetch("data.csv")
+  .then(r => r.text())
+  .then(csvText => {
+    const parsed = Papa.parse(csvText, { header: true });
+    initCytoscape(parsed.data);
+  })
+  .catch(err => console.error("Ошибка загрузки CSV:", err));
       }
     });
 
