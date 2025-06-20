@@ -22,15 +22,11 @@
   <div id="cy"></div>
 
   <script>
-   fetch("https://script.google.com/macros/s/AKfycbzrJjPnT1PgUCKe2BYHb6Genr1SM-LxfmDbeZbT0B9pFDZCEwavwywJ_g77HC2kC2na/exec")
+  fetch("https://script.google.com/macros/s/AKfycbwqnN3UcZkyjCfarVQ-rOanhcOyAZxQgjif8QjUUm1XAjhZrvHC6eR2WUhFGb864PE/exec")
   .then(r => r.json())
-  .then(rows => {
-    console.log(rows); // проверь в DevTools
-    initCytoscape(rows);
-  })
-  .catch(err => {
-    console.error("Ошибка загрузки данных:", err);
-  });
+  .then(data => initCytoscape(data))
+  .catch(err => console.error("Ошибка загрузки данных:", err));
+    
 </script>
 </body>
 </html>
