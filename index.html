@@ -25,11 +25,11 @@
       const added = new Set();
 
       rows.forEach(r => {
-        const roles = [
-          { role: "Судья", name: r["Судья"], photo: r["Фото судьи URL"] },
-          { role: "Подсудимый", name: r["Подсудимый"], photo: r["Фото подсудимого"] },
-          { role: "Прокурор", name: r["Прокурор"], photo: r["Фото прокурора URL"] || "" }
-        ];
+const roles = [
+  { role: "Судья", name: r["Судья"], photo: r["Фото судьи URL"] },
+  { role: "Подсудимый", name: r["Подсудимый"], photo: r["Фото подсудимого URL"] },
+  { role: "Прокурор", name: r["Прокурор"], photo: r["Фото прокурора URL"] || "" }
+];
 
         roles.forEach(({role, name, photo}) => {
           if (!name) return;
