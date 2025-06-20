@@ -1,0 +1,29 @@
+body {
+  font-family: sans-serif;
+  padding: 20px;
+}
+
+#tree-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 30px;
+}
+
+.node {
+  text-align: center;
+  position: relative;
+}
+
+.node img {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  border: 2px solid #333;
+}
+
+.connector {
+  height: 20px;
+  width: 2px;
+  background-color: black;
+  margin: 0 auto;
+}
