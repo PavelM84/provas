@@ -3,8 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <title>Граф судей</title>
-  <script src="https://unpkg.com/papaparse@5.4.1/papaparse.min.js"></script>
+  <!-- Сначала Cytoscape -->
   <script src="https://unpkg.com/cytoscape@3.25.3/dist/cytoscape.min.js"></script>
+
+  <!-- Потом PapaParse -->
+  <script src="https://unpkg.com/papaparse@5.4.1/papaparse.min.js"></script>
+
+  <!-- CSS -->
   <style>
     #cy {
       width: 100%;
@@ -20,6 +25,7 @@
 
   <script>
     const sheetURL = "https://docs.google.com/spreadsheets/d/1QboKxJA_rkU6HMy-L8Fm399O5qLNWgTNa_0VpP1slgM/export?format=csv&gid=0";
+
 
     Papa.parse(sheetURL, {
       download: true,
