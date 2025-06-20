@@ -1,10 +1,10 @@
-
 <!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
   <title>Граф судей</title>
   <script src="https://unpkg.com/cytoscape@3.25.3/dist/cytoscape.min.js"></script>
+  <script src="https://unpkg.com/papaparse@5.4.1/papaparse.min.js"></script>
   <style>
     #cy {
       width: 100%;
@@ -19,115 +19,120 @@
   <div id="cy"></div>
 
   <script>
-  fetch("https://script.google.com/macros/s/AKfycbxvnspyYJZu7v4-e3vFpn9EkdCtwmL2F8bnkN_9aA1-ABfSEtaieroDckoUoRVjqFnv/exec")
-    .then(r => r.json())
-    .then(data => initCytoscape(data))
-    .catch(err => console.error("Ошибка загрузки данных:", err));
+    Papa.parse("data.csv", {
+      download: true,
+      header: true,
+      complete: function(results) {
+        initCytoscape(results.data);
+      },
+      error: function(err) {
+        console.error("Ошибка загрузки CSV:", err);
+      }
+    });
 
-  function initCytoscape(rows) {
-    const nodes = [], edges = [];
-    const added = new Set();
+    function initCytoscape(rows) {
+      const nodes = [], edges = [];
+      const added = new Set();
 
-    rows.forEach(r => {
-      if (!r["Судья"] && !r["Подсудимый"]) return;
+      rows.forEach(r => {
+        if (!r["Судья"] && !r["Подсудимый"]) return;
 
-      const roles = [
-        { role: "Судья", name: r["Судья"], photo: r["Фото судьи URL"] },
-        { role: "Подсудимый", name: r["Подсудимый"], photo: r["Фото подсудимого URL"] },
-        { role: "Прокурор", name: r["Прокурор"], photo: r["Фото прокурора URL"] || "" }
-      ];
+        const roles = [
+          { role: "Судья", name: r["Судья"], photo: r["Фото судьи URL"] },
+          { role: "Подсудимый", name: r["Подсудимый"], photo: r["Фото подсудимого URL"] },
+          { role: "Прокурор", name: r["Прокурор"], photo: r["Фото прокурора URL"] || "" }
+        ];
 
-      roles.forEach(({ role, name, photo }) => {
-        if (!name) return;
-        const key = role + "|" + name;
-        if (!added.has(key)) {
-          added.add(key);
-          nodes.push({
-            data: { id: key, label: name, role: role, photo: photo }
+        roles.forEach(({ role, name, photo }) => {
+          if (!name) return;
+          const key = role + "|" + name;
+          if (!added.has(key)) {
+            added.add(key);
+            nodes.push({
+              data: { id: key, label: name, role: role, photo: photo }
+            });
+          }
+        });
+
+        const judge = r["Судья"] ? "Судья|" + r["Судья"] : null;
+        const def = r["Подсудимый"] ? "Подсудимый|" + r["Подсудимый"] : null;
+        const pros = r["Прокурор"] ? "Прокурор|" + r["Прокурор"] : null;
+
+        if (judge && def) {
+          edges.push({
+            data: {
+              id: judge + "-" + def,
+              source: judge,
+              target: def,
+              label: `Статья: ${r["Статья"] || "?"}, ${r["Год"] || "?"}`
+            }
+          });
+        }
+
+        if (pros && def) {
+          edges.push({
+            data: {
+              id: pros + "-" + def,
+              source: pros,
+              target: def,
+              label: `Обвиняет`
+            }
           });
         }
       });
 
-      const judge = r["Судья"] ? "Судья|" + r["Судья"] : null;
-      const def = r["Подсудимый"] ? "Подсудимый|" + r["Подсудимый"] : null;
-      const pros = r["Прокурор"] ? "Прокурор|" + r["Прокурор"] : null;
-
-      if (judge && def) {
-        edges.push({
-          data: {
-            id: judge + "-" + def,
-            source: judge,
-            target: def,
-            label: `Статья: ${r["Статья"] || "?"}, ${r["Год"] || "?"}`
+      const cy = cytoscape({
+        container: document.getElementById('cy'),
+        elements: { nodes, edges },
+        style: [
+          {
+            selector: 'node',
+            style: {
+              'background-color': '#999',
+              'background-image': 'data(photo)',
+              'background-fit': 'cover',
+              'label': 'data(label)',
+              'text-valign': 'bottom',
+              'text-margin-y': 4,
+              'font-size': 10,
+              'width': 60,
+              'height': 60,
+              'border-width': 3,
+              'border-color': '#fff',
+              'color': '#333'
+            }
+          },
+          { selector: 'node[role="Судья"]', style: { 'border-color': '#f39c12' } },
+          { selector: 'node[role="Прокурор"]', style: { 'border-color': '#2980b9' } },
+          { selector: 'node[role="Подсудимый"]', style: { 'border-color': '#e74c3c' } },
+          {
+            selector: 'edge',
+            style: {
+              'curve-style': 'bezier',
+              'target-arrow-shape': 'triangle',
+              'target-arrow-color': '#888',
+              'line-color': '#888',
+              'label': 'data(label)',
+              'font-size': 9,
+              'text-background-color': '#fff',
+              'text-background-opacity': 0.7,
+              'text-background-padding': 2
+            }
           }
-        });
-      }
-
-      if (pros && def) {
-        edges.push({
-          data: {
-            id: pros + "-" + def,
-            source: pros,
-            target: def,
-            label: `Обвиняет`
-          }
-        });
-      }
-    });
-
-    const cy = cytoscape({
-      container: document.getElementById('cy'),
-      elements: { nodes, edges },
-      style: [
-        {
-          selector: 'node',
-          style: {
-            'background-color': '#999',
-            'background-image': 'data(photo)',
-            'background-fit': 'cover',
-            'label': 'data(label)',
-            'text-valign': 'bottom',
-            'text-margin-y': 4,
-            'font-size': 10,
-            'width': 60,
-            'height': 60,
-            'border-width': 3,
-            'border-color': '#fff',
-            'color': '#333'
-          }
-        },
-        { selector: 'node[role="Судья"]', style: { 'border-color': '#f39c12' } },
-        { selector: 'node[role="Прокурор"]', style: { 'border-color': '#2980b9' } },
-        { selector: 'node[role="Подсудимый"]', style: { 'border-color': '#e74c3c' } },
-        {
-          selector: 'edge',
-          style: {
-            'curve-style': 'bezier',
-            'target-arrow-shape': 'triangle',
-            'target-arrow-color': '#888',
-            'line-color': '#888',
-            'label': 'data(label)',
-            'font-size': 9,
-            'text-background-color': '#fff',
-            'text-background-opacity': 0.7,
-            'text-background-padding': 2
-          }
+        ],
+        layout: {
+          name: 'breadthfirst',
+          directed: true,
+          spacingFactor: 1.5,
+          padding: 10
         }
-      ],
-      layout: {
-        name: 'breadthfirst',
-        directed: true,
-        spacingFactor: 1.5,
-        padding: 10
-      }
-    });
+      });
 
-    cy.on('tap', 'node', evt => {
-      const d = evt.target.data();
-      alert(`${d.role}:
-${d.label}`);
-    });
-  }
+      cy.on('tap', 'node', evt => {
+        const d = evt.target.data();
+        alert(`${d.role}:\n${d.label}`);
+      });
+    }
   </script>
 </body>
 </html>
