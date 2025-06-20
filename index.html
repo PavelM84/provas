@@ -10,7 +10,7 @@
   </style>
 </head>
 <body>
-  <h2>Сетевая модель: судья – подсудимые – прокурор</h2>
+  <h2>Сетевая модель: судья → подсудимые → прокурор</h2>
   <div id="cy"></div>
   <script>
     const sheetCSV = "https://docs.google.com/spreadsheets/d/1QboKxJA_rkU6HMy-L8Fm399O5qLNWgTNa_0VpP1slgM/export?format=csv&gid=0";
@@ -25,11 +25,15 @@
       const added = new Set();
 
       rows.forEach(r => {
-        const roles = ["Судья","Подсудимый","Прокурор"];
-        roles.forEach(role => {
-          const name = r[role];
-          const photo = r[`${role} Фото`];
-          const key = role + '|' + name;
+        const roles = [
+          { role: "Судья", name: r["Судья"], photo: r["Фото судьи URL"] },
+          { role: "Подсудимый", name: r["Подсудимый"], photo: r["Фото подсудимого"] },
+          { role: "Прокурор", name: r["Прокурор"], photo: r["Фото прокурора URL"] || "" }
+        ];
+
+        roles.forEach(({role, name, photo}) => {
+          if (!name) return;
+          const key = role + "|" + name;
           if (!added.has(key)) {
             added.add(key);
             nodes.push({
@@ -37,11 +41,30 @@
             });
           }
         });
-        const j = "Судья|" + r["Судья"];
-        const p = "Подсудимый|" + r["Подсудимый"];
-        const proc = "Прокурор|" + r["Прокурор"];
-        edges.push({ data: { id: j+'-'+p, source: j, target: p, label: `${r.Статья}, ${r.Год}` } });
-        edges.push({ data: { id: proc+'-'+p, source: proc, target: p, label: `обвиняет` } });
+
+        const j = r["Судья"] ? "Судья|" + r["Судья"] : null;
+        const d = r["Подсудимый"] ? "Подсудимый|" + r["Подсудимый"] : null;
+        const p = r["Прокурор"] ? "Прокурор|" + r["Прокурор"] : null;
+
+        if (j && d) {
+          edges.push({
+            data: {
+              id: j + "-" + d,
+              source: j, target: d,
+              label: `Судит: ${r["Статья"] || ""}, ${r["Год"] || ""}`
+            }
+          });
+        }
+
+        if (p && d) {
+          edges.push({
+            data: {
+              id: p + "-" + d,
+              source: p, target: d,
+              label: `Обвиняет`
+            }
+          });
+        }
       });
 
       const cy = cytoscape({
@@ -49,19 +72,35 @@
         elements: { nodes, edges },
         style: [
           { selector: 'node', style: {
-            'background-fit': 'cover', 'background-image': 'data(photo)',
-            'label': 'data(label)', 'text-valign': 'bottom', 'text-margin-y': 2,
-            'height': 50, 'width': 50, 'font-size': 10
+            'background-color': '#999',
+            'background-fit': 'cover',
+            'background-image': 'data(photo)',
+            'label': 'data(label)',
+            'text-valign': 'bottom',
+            'text-margin-y': 4,
+            'font-size': 10,
+            'width': 60,
+            'height': 60,
+            'border-width': 3,
+            'border-color': '#fff',
+            'color': '#333'
           }},
-          { selector: 'node[role="Судья"]', style: {'border-color': '#f39c12','border-width':3} },
-          { selector: 'node[role="Прокурор"]', style: {'border-color': '#2980b9','border-width':3} },
+          { selector: 'node[role="Судья"]', style: { 'border-color': '#f39c12' } },
+          { selector: 'node[role="Прокурор"]', style: { 'border-color': '#2980b9' } },
+          { selector: 'node[role="Подсудимый"]', style: { 'border-color': '#e74c3c' } },
           { selector: 'edge', style: {
-            'curve-style': 'bezier', 'target-arrow-shape': 'triangle',
-            'label': 'data(label)', 'font-size': 8, 'line-color': '#888',
-            'target-arrow-color': '#888'
+            'curve-style': 'bezier',
+            'target-arrow-shape': 'triangle',
+            'target-arrow-color': '#888',
+            'line-color': '#888',
+            'label': 'data(label)',
+            'font-size': 9,
+            'text-background-color': '#fff',
+            'text-background-opacity': 0.7,
+            'text-background-padding': 2
           }}
         ],
-        layout: { name: 'breadthfirst', padding: 10, directed: true, spacingFactor: 1.5 }
+        layout: { name: 'breadthfirst', directed: true, spacingFactor: 1.5, padding: 10 }
       });
 
       cy.on('tap', 'node', evt => {
