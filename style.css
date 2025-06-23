@@ -27,3 +27,45 @@ body {
   background-color: black;
   margin: 0 auto;
 }
+
+#intro {
+  max-width: 600px;
+  margin: 40px auto;
+  text-align: center;
+}
+
+#search {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 30px;
+}
+
+#search input {
+  margin: 5px;
+  padding: 10px;
+  width: 300px;
+}
+
+#search button {
+  margin: 5px;
+  padding: 10px 20px;
+}
+
+#suggestions {
+  position: absolute;
+  background: white;
+  border: 1px solid #ccc;
+  max-width: 300px;
+  z-index: 10;
+}
+
+#suggestions div {
+  padding: 5px;
+  cursor: pointer;
+}
+
+#suggestions div:hover {
+  background: #eee;
+}
+
