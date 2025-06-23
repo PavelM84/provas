@@ -2,35 +2,38 @@ const sheetId = "1QboKxJA_rkU6HMy-L8Fm399O5qLNWgTNa_0VpP1slgM";
 const range = "A2:F100";
 let allData = [];
 
-async function loadData() {
+window.loadData = async function() {
   const response = await gapi.client.sheets.spreadsheets.values.get({
     spreadsheetId: sheetId,
     range: range
   });
 
   allData = response.result.values || [];
-
   setupAutocomplete(allData);
-}
+
+  document.getElementById("submitBtn").disabled = false;
+  document.getElementById("topBtn").disabled = false;
+};
 
 function setupAutocomplete(data) {
   const judgeInput = document.getElementById("judgeInput");
   const defendantInput = document.getElementById("defendantInput");
   const suggestions = document.getElementById("suggestions");
 
-  const getUniqueNames = (index) => [...new Set(data.map(row => row[index]))];
-
   function setup(input, index) {
     input.addEventListener("input", () => {
       const value = input.value.toLowerCase();
-      if (!value) return (suggestions.innerHTML = "");
+      if (!value) return suggestions.innerHTML = "";
 
-      const list = getUniqueNames(index).filter(name =>
-        name.toLowerCase().includes(value)
-      );
+      const list = [...new Set(data.map(row => row[index]))]
+        .filter(name => name.toLowerCase().includes(value))
+        .slice(0, 5);
 
       suggestions.innerHTML = list.map(name => `<div>${name}</div>`).join("");
       suggestions.style.display = "block";
+      suggestions.style.position = "absolute";
+      suggestions.style.top = (input.offsetTop + input.offsetHeight) + "px";
+      suggestions.style.left = input.offsetLeft + "px";
 
       suggestions.querySelectorAll("div").forEach(div =>
         div.onclick = () => {
@@ -87,6 +90,5 @@ document.getElementById("topBtn").onclick = () => {
     .map(([judge]) => judge);
 
   const filtered = allData.filter(([j]) => top5.includes(j));
-
   renderGraph(filtered);
 };
