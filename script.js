@@ -1,47 +1,55 @@
 const sheetId = "1QboKxJA_rkU6HMy-L8Fm399O5qLNWgTNa_0VpP1slgM";
-const range = "A1:F100"; // Судья, Фото судьи, Подсудимый, Фото подсудимого, Прокурор, Фото прокурора
+const range = "A2:F100";
+let allData = [];
 
 async function loadData() {
   const response = await gapi.client.sheets.spreadsheets.values.get({
     spreadsheetId: sheetId,
-    range: range,
+    range: range
   });
 
-  const rows = response.result.values;
-  if (!rows || rows.length === 0) return;
+  allData = response.result.values || [];
 
-  const container = document.getElementById("tree-container");
-  const [header, ...data] = rows;
-
-  const judges = [...new Set(data.map(r => r[0]))];
-  const defendants = [...new Set(data.map(r => r[2]))];
-
-  fillFilter("judgeFilter", judges);
-  fillFilter("defendantFilter", defendants);
-
-  renderTree(data);
+  setupAutocomplete(allData);
 }
 
-function fillFilter(id, items) {
-  const select = document.getElementById(id);
-  select.innerHTML = `<option value="">Все</option>` + items.map(name =>
-    `<option>${name}</option>`).join("");
-  select.onchange = () => {
-    gapi.client.init().then(loadData);
-  };
+function setupAutocomplete(data) {
+  const judgeInput = document.getElementById("judgeInput");
+  const defendantInput = document.getElementById("defendantInput");
+  const suggestions = document.getElementById("suggestions");
+
+  const getUniqueNames = (index) => [...new Set(data.map(row => row[index]))];
+
+  function setup(input, index) {
+    input.addEventListener("input", () => {
+      const value = input.value.toLowerCase();
+      if (!value) return (suggestions.innerHTML = "");
+
+      const list = getUniqueNames(index).filter(name =>
+        name.toLowerCase().includes(value)
+      );
+
+      suggestions.innerHTML = list.map(name => `<div>${name}</div>`).join("");
+      suggestions.style.display = "block";
+
+      suggestions.querySelectorAll("div").forEach(div =>
+        div.onclick = () => {
+          input.value = div.textContent;
+          suggestions.innerHTML = "";
+        }
+      );
+    });
+  }
+
+  setup(judgeInput, 0);
+  setup(defendantInput, 2);
 }
 
-function renderTree(data) {
+function renderGraph(filteredData) {
   const container = document.getElementById("tree-container");
   container.innerHTML = "";
 
-  const judgeFilter = document.getElementById("judgeFilter").value;
-  const defFilter = document.getElementById("defendantFilter").value;
-
-  data.filter(r => (!judgeFilter || r[0] === judgeFilter) && (!defFilter || r[2] === defFilter))
-      .forEach(row => {
-    const [judge, judgePhoto, defendant, defPhoto, prosecutor, prosPhoto] = row;
-
+  filteredData.forEach(([judge, judgePhoto, defendant, defPhoto, pros, prosPhoto]) => {
     const node = document.createElement("div");
     node.className = "node";
     node.innerHTML = `
@@ -49,8 +57,36 @@ function renderTree(data) {
       <div class="connector"></div>
       <div><img src="${defPhoto}" title="${defendant}"><br>${defendant}</div>
       <div class="connector"></div>
-      <div><img src="${prosPhoto}" title="${prosecutor}"><br>${prosecutor}</div>
+      <div><img src="${prosPhoto}" title="${pros}"><br>${pros}</div>
     `;
     container.appendChild(node);
   });
 }
+
+document.getElementById("submitBtn").onclick = () => {
+  const judge = document.getElementById("judgeInput").value.trim();
+  const def = document.getElementById("defendantInput").value.trim();
+
+  const filtered = allData.filter(([j, , d]) =>
+    (!judge || j === judge) && (!def || d === def)
+  );
+
+  renderGraph(filtered);
+};
+
+document.getElementById("topBtn").onclick = () => {
+  const counts = {};
+
+  for (const [judge] of allData) {
+    counts[judge] = (counts[judge] || 0) + 1;
+  }
+
+  const top5 = Object.entries(counts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([judge]) => judge);
+
+  const filtered = allData.filter(([j]) => top5.includes(j));
+
+  renderGraph(filtered);
+};
