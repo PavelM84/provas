@@ -52,17 +52,76 @@ function renderGraph(filteredData) {
   const container = document.getElementById("tree-container");
   container.innerHTML = "";
 
+  // Группируем по судьям
+  const judgeMap = {};
+
   filteredData.forEach(([judge, judgePhoto, defendant, defPhoto, pros, prosPhoto]) => {
-    const node = document.createElement("div");
-    node.className = "node";
-    node.innerHTML = `
-      <div><img src="${judgePhoto}" title="${judge}"><br>${judge}</div>
-      <div class="connector"></div>
-      <div><img src="${defPhoto}" title="${defendant}"><br>${defendant}</div>
-      <div class="connector"></div>
-      <div><img src="${prosPhoto}" title="${pros}"><br>${pros}</div>
+    if (!judgeMap[judge]) {
+      judgeMap[judge] = {
+        photo: judgePhoto,
+        cases: []
+      };
+    }
+    judgeMap[judge].cases.push({
+      defendant,
+      defPhoto,
+      prosecutor: pros,
+      prosPhoto
+    });
+  });
+
+  Object.entries(judgeMap).forEach(([judge, { photo, cases }]) => {
+    const judgeBlock = document.createElement("div");
+    judgeBlock.className = "tree-block";
+
+    // Блок судьи
+    const judgeNode = document.createElement("div");
+    judgeNode.className = "tree-node";
+    judgeNode.innerHTML = `
+      <img src="${photo}" alt="${judge}">
+      <div class="label">${judge}</div>
+      <div class="count">${cases.length} дел</div>
     `;
-    container.appendChild(node);
+    judgeBlock.appendChild(judgeNode);
+
+    // Линия вниз
+    const line = document.createElement("div");
+    line.className = "connect-line";
+    judgeBlock.appendChild(line);
+
+    // Подсудимые
+    const subtree = document.createElement("div");
+    subtree.className = "subtree";
+
+    cases.forEach(({ defendant, defPhoto, prosecutor, prosPhoto }) => {
+      const defBlock = document.createElement("div");
+      defBlock.className = "tree-block";
+
+      const defNode = document.createElement("div");
+      defNode.className = "tree-node";
+      defNode.innerHTML = `
+        <img src="${defPhoto}" alt="${defendant}">
+        <div class="label">${defendant}</div>
+      `;
+      defBlock.appendChild(defNode);
+
+      const defLine = document.createElement("div");
+      defLine.className = "connect-line";
+      defBlock.appendChild(defLine);
+
+      const prosNode = document.createElement("div");
+      prosNode.className = "tree-node";
+      prosNode.innerHTML = `
+        <img src="${prosPhoto}" alt="${prosecutor}">
+        <div class="label">${prosecutor}</div>
+      `;
+      defBlock.appendChild(prosNode);
+
+      subtree.appendChild(defBlock);
+    });
+
+    judgeBlock.appendChild(subtree);
+    container.appendChild(judgeBlock);
   });
 }
 
