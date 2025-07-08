@@ -1,29 +1,26 @@
+
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8" />
-  <title>Связи Судей и Подсудимых</title>
-  <link rel="stylesheet" href="style.css" />
+  <meta charset="UTF-8">
+  <title>Судьи и Подсудимые</title>
+  <link rel="stylesheet" href="style.css">
   <script src="https://apis.google.com/js/api.js"></script>
 </head>
 <body>
   <section id="intro">
     <h1>Кто кого судит</h1>
-    <p>Проект визуализирует связи между судьями, подсудимыми и прокурорами на основе открытых данных. Здесь можно узнать, кто кого судил, кто чаще других выносит приговоры, и многое другое.</p>
+    <p>Нажмите на судью, чтобы раскрыть дерево дел</p>
   </section>
 
   <section id="search">
-    <input type="text" id="judgeInput" placeholder="Введите фамилию судьи..." autocomplete="off" />
-    <input type="text" id="defendantInput" placeholder="Введите фамилию подсудимого..." autocomplete="off" />
-    <button id="submitBtn" disabled>Мы знаем</button>
-    <button id="topBtn" disabled>TOP 5</button>
-    <div id="suggestions"></div>
+    <input type="text" id="judgeInput" placeholder="Введите фамилию судьи...">
+    <button id="submitBtn" disabled>Показать</button>
+    <button id="topBtn" disabled>Топ 5</button>
   </section>
 
   <section id="tree-container"></section>
 
- 
-  <script src="gapi.js"></script>
   <script src="script.js"></script>
 </body>
 </html>

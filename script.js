@@ -1,94 +1,73 @@
+
 const sheetId = "1QboKxJA_rkU6HMy-L8Fm399O5qLNWgTNa_0VpP1slgM";
 const range = "A2:F100";
 let allData = [];
 
-window.loadData = async function() {
+window.onload = () => {
+  gapi.load("client", async () => {
+    await gapi.client.init({
+      apiKey: "AIzaSyD6RZZxVCFv0WzRuBQqmgZZKjD7H8tPydE",
+      discoveryDocs: ["https://sheets.googleapis.com/$discovery/rest?version=v4"],
+    });
+    loadData();
+  });
+};
+
+async function loadData() {
   const response = await gapi.client.sheets.spreadsheets.values.get({
     spreadsheetId: sheetId,
     range: range
   });
-
   allData = response.result.values || [];
-  setupAutocomplete(allData);
-
   document.getElementById("submitBtn").disabled = false;
   document.getElementById("topBtn").disabled = false;
-};
-
-function setupAutocomplete(data) {
-  const judgeInput = document.getElementById("judgeInput");
-  const defendantInput = document.getElementById("defendantInput");
-  const suggestions = document.getElementById("suggestions");
-
-  function setup(input, index) {
-    input.addEventListener("input", () => {
-      const value = input.value.toLowerCase();
-      if (!value) return suggestions.innerHTML = "";
-
-      const list = [...new Set(data.map(row => row[index]))]
-        .filter(name => name.toLowerCase().includes(value))
-        .slice(0, 5);
-
-      suggestions.innerHTML = list.map(name => `<div>${name}</div>`).join("");
-      suggestions.style.display = "block";
-      suggestions.style.position = "absolute";
-      suggestions.style.top = (input.offsetTop + input.offsetHeight) + "px";
-      suggestions.style.left = input.offsetLeft + "px";
-
-      suggestions.querySelectorAll("div").forEach(div =>
-        div.onclick = () => {
-          input.value = div.textContent;
-          suggestions.innerHTML = "";
-        }
-      );
-    });
-  }
-
-  setup(judgeInput, 0);
-  setup(defendantInput, 2);
 }
 
-function renderGraph(filteredData) {
+function renderTree(judgeName) {
   const container = document.getElementById("tree-container");
   container.innerHTML = "";
 
-  filteredData.forEach(([judge, judgePhoto, defendant, defPhoto, pros, prosPhoto]) => {
-    const node = document.createElement("div");
-    node.className = "node";
-    node.innerHTML = `
-      <div><img src="${judgePhoto}" title="${judge}"><br>${judge}</div>
-      <div class="connector"></div>
-      <div><img src="${defPhoto}" title="${defendant}"><br>${defendant}</div>
-      <div class="connector"></div>
-      <div><img src="${prosPhoto}" title="${pros}"><br>${pros}</div>
-    `;
-    container.appendChild(node);
+  const judgeCases = allData.filter(([j]) => j === judgeName);
+  if (judgeCases.length === 0) return;
+
+  const [_, judgePhoto] = judgeCases[0];
+  const judgeNode = document.createElement("div");
+  judgeNode.className = "tree-node judge";
+  judgeNode.innerHTML = `<img src="\${judgePhoto}" alt="\${judgeName}"><br><strong>\${judgeName}</strong><br>\${judgeCases.length} дел`;
+  container.appendChild(judgeNode);
+
+  const subtree = document.createElement("div");
+  subtree.className = "subtree";
+
+  judgeCases.forEach(([_, __, defendant, defPhoto, pros, prosPhoto]) => {
+    const def = document.createElement("div");
+    def.className = "tree-node";
+    def.innerHTML = `<img src="\${defPhoto}" alt="\${defendant}"><br><span>\${defendant}</span>`;
+
+    const prosNode = document.createElement("div");
+    prosNode.className = "tree-node";
+    prosNode.innerHTML = `<img src="\${prosPhoto}" alt="\${pros}"><br><span>\${pros}</span>`;
+
+    const caseBlock = document.createElement("div");
+    caseBlock.className = "case-block";
+    caseBlock.appendChild(def);
+    caseBlock.appendChild(prosNode);
+    subtree.appendChild(caseBlock);
   });
+
+  container.appendChild(subtree);
 }
 
 document.getElementById("submitBtn").onclick = () => {
   const judge = document.getElementById("judgeInput").value.trim();
-  const def = document.getElementById("defendantInput").value.trim();
-
-  const filtered = allData.filter(([j, , d]) =>
-    (!judge || j === judge) && (!def || d === def)
-  );
-
-  renderGraph(filtered);
+  renderTree(judge);
 };
 
 document.getElementById("topBtn").onclick = () => {
   const counts = {};
-
-  for (const [judge] of allData) {
-    counts[judge] = (counts[judge] || 0) + 1;
+  for (const [j] of allData) {
+    counts[j] = (counts[j] || 0) + 1;
   }
-
-  const top5 = Object.entries(counts)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 5)
-    .map(([judge]) => judge);
-
-  const filtered = allData.filter(([j]) => top5.includes(j));
-  renderGraph(filtered);
+  const top = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
+  if (top) renderTree(top[0]);
 };
