@@ -48,34 +48,19 @@ function setupAutocomplete(data) {
   setup(defendantInput, 2);
 }
 
-function renderTree(data) {
-  const counts = {};
-  data.forEach(({ Judge }) => {
-    counts[Judge] = (counts[Judge] || 0) + 1;
-  });
-
-  const byJudge = data.reduce((acc, { Judge, Court, Defendant, Articles }) => {
-    if (!acc[Judge]) acc[Judge] = { Court, defendantSet: new Set() };
-    acc[Judge].defendantSet.add(Defendant);
-    return acc;
-  }, {});
-
+function renderGraph(filteredData) {
   const container = document.getElementById("tree-container");
-  container.innerHTML = '';
-  container.className = 'tree';
+  container.innerHTML = "";
 
-  Object.entries(byJudge).forEach(([judge, info]) => {
-    const node = document.createElement('div');
-    node.className = 'judge-node';
+  filteredData.forEach(([judge, judgePhoto, defendant, defPhoto, pros, prosPhoto]) => {
+    const node = document.createElement("div");
+    node.className = "node";
     node.innerHTML = `
-      <img src="https://via.placeholder.com/80" alt="${judge}">
-      <div class="label">
-        <div class="name">${judge}</div>
-        <div class="count">${counts[judge]} дел</div>
-      </div>
-      <div class="children">
-        ${[...info.defendantSet].map(d => `<div class="child-node">${d}</div>`).join('')}
-      </div>
+      <div><img src="${judgePhoto}" title="${judge}"><br>${judge}</div>
+      <div class="connector"></div>
+      <div><img src="${defPhoto}" title="${defendant}"><br>${defendant}</div>
+      <div class="connector"></div>
+      <div><img src="${prosPhoto}" title="${pros}"><br>${pros}</div>
     `;
     container.appendChild(node);
   });
