@@ -129,9 +129,24 @@ document.getElementById("submitBtn").onclick = () => {
   const judge = document.getElementById("judgeInput").value.trim();
   const def = document.getElementById("defendantInput").value.trim();
 
-  const filtered = allData.filter(([j, , d]) =>
-    (!judge || j === judge) && (!def || d === def)
-  );
+  let filtered;
+
+  if (judge) {
+    // Если задан судья — фильтруем по нему
+    filtered = allData.filter(([j]) => j === judge);
+  } else if (def) {
+    // Если задан только подсудимый — ищем судью и выводим все дела этого судьи
+    const match = allData.find(([ , , d]) => d === def);
+    if (match) {
+      const judgeName = match[0];
+      filtered = allData.filter(([j]) => j === judgeName);
+    } else {
+      filtered = []; // Нет совпадений
+    }
+  } else {
+    // Если ничего не введено — ничего не показываем
+    filtered = [];
+  }
 
   renderGraph(filtered);
 };
