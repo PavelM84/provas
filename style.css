@@ -69,17 +69,3 @@ body {
   background: #eee;
 }
 
-.judge-card img {
-  width: 100px;
-  height: 100px;
-  object-fit: cover;
-  border-radius: 50%;
-}
-
-.defendants {
-  margin: 0 10px 20px 10px;
-  font-size: 14px;
-  border-left: 2px solid #eee;
-  padding-left: 10px;
-}
-
