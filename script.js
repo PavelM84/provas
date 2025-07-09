@@ -1,5 +1,5 @@
 const sheetId = "1QboKxJA_rkU6HMy-L8Fm399O5qLNWgTNa_0VpP1slgM";
-const range = "A2:F100";
+const range = "A2:F369";
 let allData = [];
 
 window.loadData = async function() {
