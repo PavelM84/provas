@@ -83,14 +83,11 @@ function fillArticleSelect() {
     const select =
         document.getElementById("articleInput");
 
-    select.innerHTML =
-        '<option value="">Все статьи</option>';
-
     const articles =
         [...new Set(
             allData
-                .map(row => row[1])
-                .filter(Boolean)
+            .map(row => row[1])
+            .filter(Boolean)
         )]
         .sort();
 
@@ -125,6 +122,7 @@ function setupAutocomplete() {
 
                 suggestions.innerHTML = "";
                 suggestions.style.display = "none";
+
                 return;
             }
 
@@ -202,78 +200,71 @@ function renderGraph(data) {
         });
     });
 
-    const sortedJudges =
-        Object.entries(judges)
-        .sort(
-            (a, b) =>
-            b[1].cases.length -
-            a[1].cases.length
-        );
+    Object.entries(judges)
+        .forEach(([judge, info]) => {
 
-    sortedJudges.forEach(([judge, info]) => {
-
-        const block =
-            document.createElement("div");
-
-        block.className =
-            "judge-wrapper";
-
-        block.innerHTML = `
-
-            <div class="judge-card">
-
-                <img
-                    src="${info.photo || ''}"
-                    onerror="this.src='https://placehold.co/150x150'">
-
-                <h2>${judge}</h2>
-
-                <div class="judge-region">
-                    ${info.region || ""}
-                </div>
-
-                <div class="judge-count">
-                    Дел: ${info.cases.length}
-                </div>
-
-            </div>
-
-            <div class="defendants-grid"></div>
-
-        `;
-
-        const grid =
-            block.querySelector(".defendants-grid");
-
-        info.cases.forEach(item => {
-
-            const card =
+            const block =
                 document.createElement("div");
 
-            card.className =
-                "defendant-card";
+            block.className =
+                "judge-wrapper";
 
-            card.innerHTML = `
+            block.innerHTML = `
 
-                <img
-                    src="${item.photo || ''}"
-                    onerror="this.src='https://placehold.co/120x120'">
+                <div class="judge-card">
 
-                <div class="defendant-name">
-                    ${item.defendant || ""}
+                    <img
+                        src="${info.photo || ''}"
+                        onerror="this.src='https://placehold.co/150x150'">
+
+                    <h2>${judge}</h2>
+
+                    <div class="judge-region">
+                        ${info.region || ""}
+                    </div>
+
+                    <div class="judge-count">
+                        Дел: ${info.cases.length}
+                    </div>
+
                 </div>
 
-                <div class="defendant-article">
-                    ${item.article || ""}
-                </div>
+                <div class="defendants-grid"></div>
 
             `;
 
-            grid.appendChild(card);
-        });
+            const grid =
+                block.querySelector(".defendants-grid");
 
-        container.appendChild(block);
-    });
+            info.cases.forEach(item => {
+
+                const card =
+                    document.createElement("div");
+
+                card.className =
+                    "defendant-card";
+
+                card.innerHTML = `
+
+                    <img
+                        src="${item.photo || ''}"
+                        onerror="this.src='https://placehold.co/120x120'">
+
+                    <div class="defendant-name">
+                        ${item.defendant || ""}
+                    </div>
+
+                    <div class="defendant-article">
+                        ${item.article || ""}
+                    </div>
+
+                `;
+
+                grid.appendChild(card);
+            });
+
+            container.appendChild(block);
+        });
 }
 
 submitBtn.onclick = () => {
@@ -289,6 +280,7 @@ submitBtn.onclick = () => {
 
     let filtered = [];
 
+    // поиск по судье
     if (judge) {
 
         filtered = allData.filter(row => {
@@ -307,10 +299,12 @@ submitBtn.onclick = () => {
         });
     }
 
+    // поиск по подсудимому
     else if (defendant) {
 
         const judgesFound =
             [...new Set(
+
                 allData
                     .filter(row =>
                         (row[4] || "")
@@ -318,6 +312,7 @@ submitBtn.onclick = () => {
                             .includes(defendant)
                     )
                     .map(row => row[0])
+
             )];
 
         filtered =
@@ -336,45 +331,19 @@ submitBtn.onclick = () => {
             });
     }
 
+    // только статья
     else if (article) {
 
-        const articleRows =
+        filtered =
             allData.filter(row =>
                 (row[1] || "")
                     .toLowerCase()
                     .includes(article)
             );
-
-        const judgeCounts = {};
-
-        articleRows.forEach(row => {
-
-            const judge = row[0];
-
-            judgeCounts[judge] =
-                (judgeCounts[judge] || 0) + 1;
-        });
-
-        const sortedJudges =
-            Object.entries(judgeCounts)
-            .sort((a, b) => b[1] - a[1])
-            .map(item => item[0]);
-
-        filtered = [];
-
-        sortedJudges.forEach(judge => {
-
-            filtered.push(
-                ...articleRows.filter(
-                    row => row[0] === judge
-                )
-            );
-        });
     }
 
     renderGraph(filtered);
 };
-
 topBtn.onclick = () => {
 
     const counts = {};
@@ -389,9 +358,9 @@ topBtn.onclick = () => {
 
     const top5 =
         Object.entries(counts)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 5)
-        .map(item => item[0]);
+        .sort((a,b) => b[1]-a[1])
+        .slice(0,5)
+        .map(x => x[0]);
 
     renderGraph(
         allData.filter(row =>
