@@ -1,133 +1,100 @@
 const CSV_URL =
-'https://docs.google.com/spreadsheets/d/1QboKxJA_rkU6HMy-L8Fm399O5qLNWgTNa_0VpP1slgM/gviz/tq?tqx=out:csv';
+"https://docs.google.com/spreadsheets/d/1QboKxJA_rkU6HMy-L8Fm399O5qLNWgTNa_0VpP1slgM/gviz/tq?tqx=out:csv";
 
 let allData = [];
-let judges = {};
-let judgeCases = new Map();
 
-window.addEventListener('load', loadData);
+window.addEventListener("load", loadData);
 
 async function loadData() {
+
     try {
+
         const response = await fetch(CSV_URL);
         const csvText = await response.text();
 
-        if (!csvText.includes('Судья')) {
-            throw new Error('Google Sheets вернул не CSV');
-        }
+        const rows = parseCSV(csvText);
 
-        const parsed = Papa.parse(csvText, {
-            header: true,
-            skipEmptyLines: true
-        });
+        allData = rows.slice(1);
 
-        allData = parsed.data;
+        console.log("Загружено строк:", allData.length);
 
-        console.log('Загружено строк:', allData.length);
+        setupAutocomplete();
+        fillArticleSelect();
 
-        buildData();
-        buildArticleList();
-
-        document.getElementById('submitBtn').disabled = false;
-        document.getElementById('topBtn').disabled = false;
+        submitBtn.disabled = false;
+        topBtn.disabled = false;
 
     } catch (err) {
+
         console.error(err);
-        alert('Не удалось загрузить таблицу');
+
+        alert("Не удалось загрузить данные из Google Sheets");
     }
 }
 
-function buildData() {
-    judges = {};
-    judgeCases.clear();
+function parseCSV(text) {
 
-    for (const row of allData) {
-        const judge =
-            (row['Судья'] || '').trim();
+    const rows = [];
+    let row = [];
+    let cell = "";
+    let inQuotes = false;
 
-        const defendant =
-            (row['Подсудимый'] || '').trim();
+    for (let i = 0; i < text.length; i++) {
 
-        const article =
-            (row['Статья'] || '').trim();
+        const char = text[i];
 
-        const city =
-            (row['Город'] || '').trim();
+        if (char === '"') {
 
-        const region =
-            (row['Регион'] || '').trim();
+            inQuotes = !inQuotes;
 
-        if (!judge && !defendant) {
-            continue;
+        } else if (char === "," && !inQuotes) {
+
+            row.push(cell);
+            cell = "";
+
+        } else if ((char === "\n" || char === "\r") && !inQuotes) {
+
+            if (cell || row.length) {
+
+                row.push(cell);
+                rows.push(row);
+
+                row = [];
+                cell = "";
+            }
+
+        } else {
+
+            cell += char;
         }
-
-        const judgeName =
-            judge || 'Неизвестный судья';
-
-        judgeCases.set(
-            judgeName,
-            (judgeCases.get(judgeName) || 0) + 1
-        );
-
-        if (!judges[judgeName]) {
-            judges[judgeName] = {
-                name: judgeName,
-                cases: [],
-                defendants: new Set()
-            };
-        }
-
-        const defendants = defendant
-            ? defendant
-                .split(',')
-                .map(x => x.trim())
-                .filter(Boolean)
-            : [];
-
-        judges[judgeName].cases.push({
-            defendants,
-            article,
-            city,
-            region
-        });
-
-        defendants.forEach(d => {
-            judges[judgeName]
-                .defendants
-                .add(d);
-        });
     }
 
-    console.log(
-        'Количество судей:',
-        Object.keys(judges).length
-    );
+    if (cell || row.length) {
+
+        row.push(cell);
+        rows.push(row);
+    }
+
+    return rows;
 }
 
-function buildArticleList() {
+function fillArticleSelect() {
+
     const select =
-        document.getElementById('articleInput');
+        document.getElementById("articleInput");
 
     const articles =
         [...new Set(
             allData
-                .map(
-                    row =>
-                        (row['Статья'] || '')
-                            .trim()
-                )
-                .filter(Boolean)
+            .map(row => row[1])
+            .filter(Boolean)
         )]
-        .sort((a, b) =>
-            a.localeCompare(b, 'ru')
-        );
-
-    select.innerHTML =
-        '<option value="">Все статьи</option>';
+        .sort();
 
     articles.forEach(article => {
+
         const option =
-            document.createElement('option');
+            document.createElement("option");
 
         option.value = article;
         option.textContent = article;
@@ -136,110 +103,267 @@ function buildArticleList() {
     });
 }
 
-function getTopJudges(limit = 5) {
-    return [...judgeCases.entries()]
-        .sort((a, b) => {
-            if (b[1] !== a[1]) {
-                return b[1] - a[1];
+function setupAutocomplete() {
+
+    const suggestions =
+        document.getElementById("suggestions");
+
+    function setup(inputId, columnIndex) {
+
+        const input =
+            document.getElementById(inputId);
+
+        input.addEventListener("input", () => {
+
+            const value =
+                input.value.toLowerCase();
+
+            if (!value) {
+
+                suggestions.innerHTML = "";
+                suggestions.style.display = "none";
+
+                return;
             }
 
-            return a[0]
-                .localeCompare(
-                    b[0],
-                    'ru'
-                );
-        })
-        .slice(0, limit);
+            const list =
+                [...new Set(
+                    allData.map(row => row[columnIndex])
+                )]
+                .filter(item =>
+                    item &&
+                    item.toLowerCase().includes(value))
+                .slice(0, 10);
+
+            suggestions.innerHTML =
+                list.map(item =>
+                    `<div class="suggestion-item">${item}</div>`
+                ).join("");
+
+            suggestions.style.display = "block";
+
+            suggestions.querySelectorAll("div")
+                .forEach(div => {
+
+                    div.onclick = () => {
+
+                        input.value =
+                            div.textContent;
+
+                        suggestions.innerHTML = "";
+                        suggestions.style.display = "none";
+                    };
+                });
+        });
+    }
+
+    setup("judgeInput", 0);
+    setup("defendantInput", 4);
 }
 
-document
-    .getElementById('topBtn')
-    .addEventListener('click', () => {
+function renderGraph(data) {
 
-        const top5 =
-            getTopJudges();
-
-        const text =
-            top5
-                .map(
-                    ([judge, count], i) =>
-                        `${i + 1}. ${judge} — ${count}`
-                )
-                .join('\n');
-
-        alert(text);
-    });
-
-document
-    .getElementById('submitBtn')
-    .addEventListener('click', () => {
-
-        const judgeName =
-            document
-                .getElementById('judgeInput')
-                .value
-                .trim();
-
-        if (!judgeName) {
-            return;
-        }
-
-        const judge =
-            judges[judgeName];
-
-        if (!judge) {
-            alert('Судья не найден');
-            return;
-        }
-
-        renderJudge(judge);
-    });
-
-function renderJudge(judge) {
     const container =
-        document.getElementById(
-            'tree-container'
-        );
+        document.getElementById("tree-container");
 
-    container.innerHTML = '';
+    container.innerHTML = "";
 
-    const title =
-        document.createElement('h2');
+    const judges = {};
 
-    title.textContent =
-        `${judge.name} (${judge.cases.length} дел)`;
+    data.forEach(row => {
 
-    container.appendChild(title);
+        const judge = row[0];
+        const article = row[1];
+        const city = row[2];
+        const region = row[3];
+        const defendant = row[4];
 
-    judge.cases.forEach(c => {
-        const div =
-            document.createElement('div');
+        const judgePhoto = row[6];
+        const defendantPhoto = row[7];
 
-        div.className = 'case';
+        if (!judges[judge]) {
 
-        div.innerHTML = `
-            <div>
-                <b>Подсудимые:</b>
-                ${c.defendants.join(', ') || 'Не указаны'}
-            </div>
+            judges[judge] = {
 
-            <div>
-                <b>Статья:</b>
-                ${c.article}
-            </div>
+                region,
+                city,
+                photo: judgePhoto,
+                cases: []
+            };
+        }
 
-            <div>
-                <b>Город:</b>
-                ${c.city}
-            </div>
+        judges[judge].cases.push({
 
-            <div>
-                <b>Регион:</b>
-                ${c.region}
-            </div>
-            <hr>
-        `;
-
-        container.appendChild(div);
+            defendant,
+            article,
+            photo: defendantPhoto
+        });
     });
+
+    Object.entries(judges)
+        .forEach(([judge, info]) => {
+
+            const block =
+                document.createElement("div");
+
+            block.className =
+                "judge-wrapper";
+
+            block.innerHTML = `
+
+                <div class="judge-card">
+
+                    <img
+                        src="${info.photo || ''}"
+                        onerror="this.src='https://placehold.co/150x150'">
+
+                    <h2>${judge}</h2>
+
+                    <div class="judge-region">
+                        ${info.region || ""}
+                    </div>
+
+                    <div class="judge-count">
+                        Дел: ${info.cases.length}
+                    </div>
+
+                </div>
+
+                <div class="defendants-grid"></div>
+
+            `;
+
+            const grid =
+                block.querySelector(".defendants-grid");
+
+            info.cases.forEach(item => {
+
+                const card =
+                    document.createElement("div");
+
+                card.className =
+                    "defendant-card";
+
+                card.innerHTML = `
+
+                    <img
+                        src="${item.photo || ''}"
+                        onerror="this.src='https://placehold.co/120x120'">
+
+                    <div class="defendant-name">
+                        ${item.defendant || ""}
+                    </div>
+
+                    <div class="defendant-article">
+                        ${item.article || ""}
+                    </div>
+
+                `;
+
+                grid.appendChild(card);
+            });
+
+            container.appendChild(block);
+        });
 }
+
+submitBtn.onclick = () => {
+
+    const judge =
+        judgeInput.value.trim().toLowerCase();
+
+    const defendant =
+        defendantInput.value.trim().toLowerCase();
+
+    const article =
+        articleInput.value.trim().toLowerCase();
+
+    let filtered = [];
+
+    // поиск по судье
+    if (judge) {
+
+        filtered = allData.filter(row => {
+
+            const articleOk =
+                !article ||
+                (row[1] || "")
+                    .toLowerCase()
+                    .includes(article);
+
+            return (
+                row[0] &&
+                row[0].toLowerCase().includes(judge) &&
+                articleOk
+            );
+        });
+    }
+
+    // поиск по подсудимому
+    else if (defendant) {
+
+        const judgesFound =
+            [...new Set(
+
+                allData
+                    .filter(row =>
+                        (row[4] || "")
+                            .toLowerCase()
+                            .includes(defendant)
+                    )
+                    .map(row => row[0])
+
+            )];
+
+        filtered =
+            allData.filter(row => {
+
+                const articleOk =
+                    !article ||
+                    (row[1] || "")
+                        .toLowerCase()
+                        .includes(article);
+
+                return (
+                    judgesFound.includes(row[0]) &&
+                    articleOk
+                );
+            });
+    }
+
+    // только статья
+    else if (article) {
+
+        filtered =
+            allData.filter(row =>
+                (row[1] || "")
+                    .toLowerCase()
+                    .includes(article)
+            );
+    }
+
+    renderGraph(filtered);
+};
+topBtn.onclick = () => {
+
+    const counts = {};
+
+    allData.forEach(row => {
+
+        const judge = row[0];
+
+        counts[judge] =
+            (counts[judge] || 0) + 1;
+    });
+
+    const top5 =
+        Object.entries(counts)
+        .sort((a,b) => b[1]-a[1])
+        .slice(0,5)
+        .map(x => x[0]);
+
+    renderGraph(
+        allData.filter(row =>
+            top5.includes(row[0]))
+    );
+};
