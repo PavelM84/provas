@@ -17,17 +17,17 @@ async function loadData() {
         allData = rows.slice(1);
 
         console.log("Загружено строк:", allData.length);
-        console.log(allData[0]);
 
-        setupAutocomplete(allData);
-        fillArticleSelect(allData);
+        setupAutocomplete();
+        fillArticleSelect();
 
-        document.getElementById("submitBtn").disabled = false;
-        document.getElementById("topBtn").disabled = false;
+        submitBtn.disabled = false;
+        topBtn.disabled = false;
 
-    } catch (error) {
+    } catch (err) {
 
-        console.error(error);
+        console.error(err);
+
         alert("Не удалось загрузить данные из Google Sheets");
     }
 }
@@ -35,27 +35,57 @@ async function loadData() {
 function parseCSV(text) {
 
     const rows = [];
+    let row = [];
+    let cell = "";
+    let inQuotes = false;
 
-    const lines = text.split(/\r?\n/);
+    for (let i = 0; i < text.length; i++) {
 
-    for (const line of lines) {
+        const char = text[i];
 
-        if (!line.trim()) continue;
+        if (char === '"') {
 
-        rows.push(line.split(","));
+            inQuotes = !inQuotes;
+
+        } else if (char === "," && !inQuotes) {
+
+            row.push(cell);
+            cell = "";
+
+        } else if ((char === "\n" || char === "\r") && !inQuotes) {
+
+            if (cell || row.length) {
+
+                row.push(cell);
+                rows.push(row);
+
+                row = [];
+                cell = "";
+            }
+
+        } else {
+
+            cell += char;
+        }
+    }
+
+    if (cell || row.length) {
+
+        row.push(cell);
+        rows.push(row);
     }
 
     return rows;
 }
 
-function fillArticleSelect(data) {
+function fillArticleSelect() {
 
     const select =
         document.getElementById("articleInput");
 
     const articles =
         [...new Set(
-            data
+            allData
             .map(row => row[1])
             .filter(Boolean)
         )]
@@ -73,18 +103,15 @@ function fillArticleSelect(data) {
     });
 }
 
-function setupAutocomplete(data) {
-
-    const judgeInput =
-        document.getElementById("judgeInput");
-
-    const defendantInput =
-        document.getElementById("defendantInput");
+function setupAutocomplete() {
 
     const suggestions =
         document.getElementById("suggestions");
 
-    function setup(input, index) {
+    function setup(inputId, columnIndex) {
+
+        const input =
+            document.getElementById(inputId);
 
         input.addEventListener("input", () => {
 
@@ -100,20 +127,22 @@ function setupAutocomplete(data) {
             }
 
             const list =
-                [...new Set(data.map(row => row[index]))]
-                .filter(name =>
-                    name &&
-                    name.toLowerCase().includes(value))
+                [...new Set(
+                    allData.map(row => row[columnIndex])
+                )]
+                .filter(item =>
+                    item &&
+                    item.toLowerCase().includes(value))
                 .slice(0, 10);
 
             suggestions.innerHTML =
-                list.map(name =>
-                    `<div class="suggestion-item">${name}</div>`
+                list.map(item =>
+                    `<div class="suggestion-item">${item}</div>`
                 ).join("");
 
             suggestions.style.display = "block";
 
-            suggestions.querySelectorAll(".suggestion-item")
+            suggestions.querySelectorAll("div")
                 .forEach(div => {
 
                     div.onclick = () => {
@@ -128,20 +157,20 @@ function setupAutocomplete(data) {
         });
     }
 
-    setup(judgeInput, 0);
-    setup(defendantInput, 4);
+    setup("judgeInput", 0);
+    setup("defendantInput", 4);
 }
 
-function renderGraph(filteredData) {
+function renderGraph(data) {
 
     const container =
         document.getElementById("tree-container");
 
     container.innerHTML = "";
 
-    const judgeMap = {};
+    const judges = {};
 
-    filteredData.forEach(row => {
+    data.forEach(row => {
 
         const judge = row[0];
         const article = row[1];
@@ -152,50 +181,50 @@ function renderGraph(filteredData) {
         const judgePhoto = row[6];
         const defendantPhoto = row[7];
 
-        if (!judgeMap[judge]) {
+        if (!judges[judge]) {
 
-            judgeMap[judge] = {
+            judges[judge] = {
 
-                photo: judgePhoto,
-                city,
                 region,
+                city,
+                photo: judgePhoto,
                 cases: []
             };
         }
 
-        judgeMap[judge].cases.push({
+        judges[judge].cases.push({
 
             defendant,
             article,
-            defendantPhoto
+            photo: defendantPhoto
         });
     });
 
-    Object.entries(judgeMap)
-        .forEach(([judge, data]) => {
+    Object.entries(judges)
+        .forEach(([judge, info]) => {
 
-            const wrapper =
+            const block =
                 document.createElement("div");
 
-            wrapper.className =
+            block.className =
                 "judge-wrapper";
 
-            wrapper.innerHTML = `
+            block.innerHTML = `
 
                 <div class="judge-card">
 
                     <img
-                        src="${data.photo || ''}"
+                        src="${info.photo || ''}"
                         onerror="this.src='https://placehold.co/150x150'">
 
                     <h2>${judge}</h2>
 
                     <div class="judge-region">
-                        ${data.region || ""}
+                        ${info.region || ""}
                     </div>
 
                     <div class="judge-count">
-                        ${data.cases.length} дел
+                        Дел: ${info.cases.length}
                     </div>
 
                 </div>
@@ -205,9 +234,9 @@ function renderGraph(filteredData) {
             `;
 
             const grid =
-                wrapper.querySelector(".defendants-grid");
+                block.querySelector(".defendants-grid");
 
-            data.cases.forEach(item => {
+            info.cases.forEach(item => {
 
                 const card =
                     document.createElement("div");
@@ -218,11 +247,11 @@ function renderGraph(filteredData) {
                 card.innerHTML = `
 
                     <img
-                        src="${item.defendantPhoto || ''}"
+                        src="${item.photo || ''}"
                         onerror="this.src='https://placehold.co/120x120'">
 
                     <div class="defendant-name">
-                        ${item.defendant}
+                        ${item.defendant || ""}
                     </div>
 
                     <div class="defendant-article">
@@ -234,129 +263,20 @@ function renderGraph(filteredData) {
                 grid.appendChild(card);
             });
 
-            container.appendChild(wrapper);
-        });
-}
-        judgeMap[judge].cases.push({
-
-            article,
-            defendant,
-            prosecutor,
-
-            defendantPhoto,
-            prosecutorPhoto
-        });
-    });
-
-    Object.entries(judgeMap)
-        .forEach(([judge, data]) => {
-
-            const judgeBlock =
-                document.createElement("div");
-
-            judgeBlock.className =
-                "tree-block";
-
-            judgeBlock.innerHTML = `
-
-                <div class="tree-node">
-
-                    <img
-                        src="${data.photo || ''}"
-                        onerror="this.src='https://placehold.co/120x120'">
-
-                    <div class="label">
-                        ${judge}
-                    </div>
-
-                    <div class="count">
-                        ${data.cases.length} дел
-                    </div>
-
-                    <div class="region">
-                        ${data.region || ''}
-                    </div>
-
-                </div>
-
-                <div class="connect-line"></div>
-            `;
-
-            const subtree =
-                document.createElement("div");
-
-            subtree.className =
-                "subtree";
-
-            data.cases.forEach(item => {
-
-                const block =
-                    document.createElement("div");
-
-                block.className =
-                    "tree-block";
-
-                block.innerHTML = `
-
-                    <div class="tree-node">
-
-                        <img
-                            src="${item.defendantPhoto || ''}"
-                            onerror="this.src='https://placehold.co/120x120'">
-
-                        <div class="label">
-                            ${item.defendant}
-                        </div>
-
-                        <div class="article">
-                            ${item.article}
-                        </div>
-
-                    </div>
-
-                    <div class="connect-line"></div>
-
-                    <div class="tree-node">
-
-                        <img
-                            src="${item.prosecutorPhoto || ''}"
-                            onerror="this.src='https://placehold.co/120x120'">
-
-                        <div class="label">
-                            ${item.prosecutor || "—"}
-                        </div>
-
-                    </div>
-                `;
-
-                subtree.appendChild(block);
-            });
-
-            judgeBlock.appendChild(subtree);
-
-            container.appendChild(judgeBlock);
+            container.appendChild(block);
         });
 }
 
-document.getElementById("submitBtn").onclick = () => {
+submitBtn.onclick = () => {
 
     const judge =
-        document.getElementById("judgeInput")
-        .value
-        .trim()
-        .toLowerCase();
+        judgeInput.value.trim().toLowerCase();
 
     const defendant =
-        document.getElementById("defendantInput")
-        .value
-        .trim()
-        .toLowerCase();
+        defendantInput.value.trim().toLowerCase();
 
     const article =
-        document.getElementById("articleInput")
-        .value
-        .trim()
-        .toLowerCase();
+        articleInput.value.trim().toLowerCase();
 
     const filtered =
         allData.filter(row => {
@@ -379,17 +299,15 @@ document.getElementById("submitBtn").onclick = () => {
                 .toLowerCase()
                 .includes(article);
 
-            return (
-                judgeOk &&
-                defendantOk &&
-                articleOk
-            );
+            return judgeOk &&
+                   defendantOk &&
+                   articleOk;
         });
 
     renderGraph(filtered);
 };
 
-document.getElementById("topBtn").onclick = () => {
+topBtn.onclick = () => {
 
     const counts = {};
 
@@ -403,13 +321,12 @@ document.getElementById("topBtn").onclick = () => {
 
     const top5 =
         Object.entries(counts)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 5)
-        .map(item => item[0]);
+        .sort((a,b) => b[1]-a[1])
+        .slice(0,5)
+        .map(x => x[0]);
 
-    const filtered =
+    renderGraph(
         allData.filter(row =>
-            top5.includes(row[0]));
-
-    renderGraph(filtered);
+            top5.includes(row[0]))
+    );
 };
