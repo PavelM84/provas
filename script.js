@@ -278,35 +278,72 @@ submitBtn.onclick = () => {
     const article =
         articleInput.value.trim().toLowerCase();
 
-    const filtered =
-        allData.filter(row => {
+    let filtered = [];
 
-            const judgeOk =
-                !judge ||
-                (row[0] || "")
-                .toLowerCase()
-                .includes(judge);
+    // поиск по судье
+    if (judge) {
 
-            const defendantOk =
-                !defendant ||
-                (row[4] || "")
-                .toLowerCase()
-                .includes(defendant);
+        filtered = allData.filter(row => {
 
             const articleOk =
                 !article ||
                 (row[1] || "")
-                .toLowerCase()
-                .includes(article);
+                    .toLowerCase()
+                    .includes(article);
 
-            return judgeOk &&
-                   defendantOk &&
-                   articleOk;
+            return (
+                row[0] &&
+                row[0].toLowerCase().includes(judge) &&
+                articleOk
+            );
         });
+    }
+
+    // поиск по подсудимому
+    else if (defendant) {
+
+        const judgesFound =
+            [...new Set(
+
+                allData
+                    .filter(row =>
+                        (row[4] || "")
+                            .toLowerCase()
+                            .includes(defendant)
+                    )
+                    .map(row => row[0])
+
+            )];
+
+        filtered =
+            allData.filter(row => {
+
+                const articleOk =
+                    !article ||
+                    (row[1] || "")
+                        .toLowerCase()
+                        .includes(article);
+
+                return (
+                    judgesFound.includes(row[0]) &&
+                    articleOk
+                );
+            });
+    }
+
+    // только статья
+    else if (article) {
+
+        filtered =
+            allData.filter(row =>
+                (row[1] || "")
+                    .toLowerCase()
+                    .includes(article)
+            );
+    }
 
     renderGraph(filtered);
 };
-
 topBtn.onclick = () => {
 
     const counts = {};
