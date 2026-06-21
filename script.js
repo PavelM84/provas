@@ -3,18 +3,75 @@ const CSV_URL =
 
 let allData = [];
 
+let judgeStats = {};
+
 window.addEventListener("load", loadData);
 
 async function loadData() {
 
     try {
 
-        const response = await fetch(CSV_URL);
-        const csvText = await response.text();
+async function loadData() {
 
-        const rows = parseCSV(csvText);
+    try {
 
-        allData = rows.slice(1);
+        const response =
+            await fetch(CSV_URL);
+
+        const csvText =
+            await response.text();
+
+        const parsed =
+            Papa.parse(csvText, {
+                header: false,
+                skipEmptyLines: true
+            });
+
+        allData = parsed.data.slice(1);
+
+
+        judgeStats = {};
+
+allData.forEach(row => {
+
+    const judge = row[0];
+
+    if (!judge) return;
+
+    judgeStats[judge] =
+        (judgeStats[judge] || 0) + 1;
+});
+
+        console.log(
+            "Загружено строк:",
+            allData.length
+        );
+
+        console.log(
+            "Николаева:",
+            allData.filter(
+                r => (r[0] || "")
+                .includes("Николаева")
+            ).length
+        );
+
+        setupAutocomplete();
+        fillArticleSelect();
+
+        submitBtn.disabled = false;
+        topBtn.disabled = false;
+
+    } catch (err) {
+
+        console.error(err);
+
+        alert(
+            "Не удалось загрузить данные"
+        );
+    }
+}
+
+        
 
         console.log("Загружено строк:", allData.length);
 
@@ -32,51 +89,7 @@ async function loadData() {
     }
 }
 
-function parseCSV(text) {
 
-    const rows = [];
-    let row = [];
-    let cell = "";
-    let inQuotes = false;
-
-    for (let i = 0; i < text.length; i++) {
-
-        const char = text[i];
-
-        if (char === '"') {
-
-            inQuotes = !inQuotes;
-
-        } else if (char === "," && !inQuotes) {
-
-            row.push(cell);
-            cell = "";
-
-        } else if ((char === "\n" || char === "\r") && !inQuotes) {
-
-            if (cell || row.length) {
-
-                row.push(cell);
-                rows.push(row);
-
-                row = [];
-                cell = "";
-            }
-
-        } else {
-
-            cell += char;
-        }
-    }
-
-    if (cell || row.length) {
-
-        row.push(cell);
-        rows.push(row);
-    }
-
-    return rows;
-}
 
 function fillArticleSelect() {
 
@@ -346,24 +359,15 @@ submitBtn.onclick = () => {
 };
 topBtn.onclick = () => {
 
-    const counts = {};
-
-    allData.forEach(row => {
-
-        const judge = row[0];
-
-        counts[judge] =
-            (counts[judge] || 0) + 1;
-    });
-
     const top5 =
-        Object.entries(counts)
-        .sort((a,b) => b[1]-a[1])
+        Object.entries(judgeStats)
+        .sort((a,b) => b[1] - a[1])
         .slice(0,5)
         .map(x => x[0]);
 
     renderGraph(
-        allData.filter(row =>
-            top5.includes(row[0]))
+        allData.filter(
+            row => top5.includes(row[0])
+        )
     );
 };
