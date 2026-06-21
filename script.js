@@ -17,8 +17,10 @@ async function loadData() {
         allData = rows.slice(1);
 
         console.log("Загружено строк:", allData.length);
+        console.log(allData[0]);
 
         setupAutocomplete(allData);
+        fillArticleSelect(allData);
 
         document.getElementById("submitBtn").disabled = false;
         document.getElementById("topBtn").disabled = false;
@@ -26,7 +28,6 @@ async function loadData() {
     } catch (error) {
 
         console.error(error);
-
         alert("Не удалось загрузить данные из Google Sheets");
     }
 }
@@ -35,64 +36,60 @@ function parseCSV(text) {
 
     const rows = [];
 
-    let row = [];
-    let cell = "";
-    let inQuotes = false;
+    const lines = text.split(/\r?\n/);
 
-    for (let i = 0; i < text.length; i++) {
+    for (const line of lines) {
 
-        const char = text[i];
+        if (!line.trim()) continue;
 
-        if (char === '"') {
-
-            inQuotes = !inQuotes;
-
-        } else if (char === "," && !inQuotes) {
-
-            row.push(cell);
-            cell = "";
-
-        } else if ((char === "\n" || char === "\r") && !inQuotes) {
-
-            if (cell || row.length) {
-
-                row.push(cell);
-
-                rows.push(row);
-
-                row = [];
-                cell = "";
-            }
-
-        } else {
-
-            cell += char;
-        }
-    }
-
-    if (cell || row.length) {
-
-        row.push(cell);
-
-        rows.push(row);
+        rows.push(line.split(","));
     }
 
     return rows;
 }
 
+function fillArticleSelect(data) {
+
+    const select =
+        document.getElementById("articleInput");
+
+    const articles =
+        [...new Set(
+            data
+            .map(row => row[1])
+            .filter(Boolean)
+        )]
+        .sort();
+
+    articles.forEach(article => {
+
+        const option =
+            document.createElement("option");
+
+        option.value = article;
+        option.textContent = article;
+
+        select.appendChild(option);
+    });
+}
+
 function setupAutocomplete(data) {
 
-    const judgeInput = document.getElementById("judgeInput");
-    const defendantInput = document.getElementById("defendantInput");
-    const articleInput = document.getElementById("articleInput");
+    const judgeInput =
+        document.getElementById("judgeInput");
 
-    const suggestions = document.getElementById("suggestions");
+    const defendantInput =
+        document.getElementById("defendantInput");
+
+    const suggestions =
+        document.getElementById("suggestions");
 
     function setup(input, index) {
 
         input.addEventListener("input", () => {
 
-            const value = input.value.toLowerCase();
+            const value =
+                input.value.toLowerCase();
 
             if (!value) {
 
@@ -104,14 +101,14 @@ function setupAutocomplete(data) {
 
             const list =
                 [...new Set(data.map(row => row[index]))]
-                .filter(item =>
-                    item &&
-                    item.toLowerCase().includes(value))
+                .filter(name =>
+                    name &&
+                    name.toLowerCase().includes(value))
                 .slice(0, 10);
 
             suggestions.innerHTML =
-                list.map(item =>
-                    `<div class="suggestion-item">${item}</div>`
+                list.map(name =>
+                    `<div class="suggestion-item">${name}</div>`
                 ).join("");
 
             suggestions.style.display = "block";
@@ -121,10 +118,10 @@ function setupAutocomplete(data) {
 
                     div.onclick = () => {
 
-                        input.value = div.textContent;
+                        input.value =
+                            div.textContent;
 
                         suggestions.innerHTML = "";
-
                         suggestions.style.display = "none";
                     };
                 });
@@ -133,7 +130,6 @@ function setupAutocomplete(data) {
 
     setup(judgeInput, 0);
     setup(defendantInput, 4);
-    setup(articleInput, 1);
 }
 
 function renderGraph(filteredData) {
@@ -153,6 +149,7 @@ function renderGraph(filteredData) {
         const region = row[3];
         const defendant = row[4];
         const prosecutor = row[5];
+
         const judgePhoto = row[6];
         const defendantPhoto = row[7];
         const prosecutorPhoto = row[8];
@@ -162,11 +159,8 @@ function renderGraph(filteredData) {
             judgeMap[judge] = {
 
                 photo: judgePhoto,
-
-                region,
-
                 city,
-
+                region,
                 cases: []
             };
         }
@@ -174,13 +168,10 @@ function renderGraph(filteredData) {
         judgeMap[judge].cases.push({
 
             article,
-
             defendant,
-
             prosecutor,
 
             defendantPhoto,
-
             prosecutorPhoto
         });
     });
@@ -191,13 +182,15 @@ function renderGraph(filteredData) {
             const judgeBlock =
                 document.createElement("div");
 
-            judgeBlock.className = "tree-block";
+            judgeBlock.className =
+                "tree-block";
 
             judgeBlock.innerHTML = `
+
                 <div class="tree-node">
 
                     <img
-                        src="${data.photo}"
+                        src="${data.photo || ''}"
                         onerror="this.src='https://placehold.co/120x120'">
 
                     <div class="label">
@@ -209,7 +202,7 @@ function renderGraph(filteredData) {
                     </div>
 
                     <div class="region">
-                        ${data.region}
+                        ${data.region || ''}
                     </div>
 
                 </div>
@@ -220,20 +213,23 @@ function renderGraph(filteredData) {
             const subtree =
                 document.createElement("div");
 
-            subtree.className = "subtree";
+            subtree.className =
+                "subtree";
 
             data.cases.forEach(item => {
 
                 const block =
                     document.createElement("div");
 
-                block.className = "tree-block";
+                block.className =
+                    "tree-block";
 
                 block.innerHTML = `
+
                     <div class="tree-node">
 
                         <img
-                            src="${item.defendantPhoto}"
+                            src="${item.defendantPhoto || ''}"
                             onerror="this.src='https://placehold.co/120x120'">
 
                         <div class="label">
@@ -251,7 +247,7 @@ function renderGraph(filteredData) {
                     <div class="tree-node">
 
                         <img
-                            src="${item.prosecutorPhoto}"
+                            src="${item.prosecutorPhoto || ''}"
                             onerror="this.src='https://placehold.co/120x120'">
 
                         <div class="label">
@@ -295,19 +291,27 @@ document.getElementById("submitBtn").onclick = () => {
 
             const judgeOk =
                 !judge ||
-                row[0].toLowerCase().includes(judge);
+                (row[0] || "")
+                .toLowerCase()
+                .includes(judge);
 
             const defendantOk =
                 !defendant ||
-                row[4].toLowerCase().includes(defendant);
+                (row[4] || "")
+                .toLowerCase()
+                .includes(defendant);
 
             const articleOk =
                 !article ||
-                row[1].toLowerCase().includes(article);
+                (row[1] || "")
+                .toLowerCase()
+                .includes(article);
 
-            return judgeOk &&
-                   defendantOk &&
-                   articleOk;
+            return (
+                judgeOk &&
+                defendantOk &&
+                articleOk
+            );
         });
 
     renderGraph(filtered);
