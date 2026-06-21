@@ -12,10 +12,13 @@ async function loadData() {
         const response = await fetch(CSV_URL);
         const csvText = await response.text();
 
+        if (!csvText.includes('Судья')) {
+            throw new Error('Google Sheets вернул не CSV');
+        }
+
         const parsed = Papa.parse(csvText, {
             header: true,
-            skipEmptyLines: true,
-            dynamicTyping: false
+            skipEmptyLines: true
         });
 
         allData = parsed.data;
@@ -24,7 +27,9 @@ async function loadData() {
 
         buildData();
         buildArticleList();
-        updateTop5();
+
+        document.getElementById('submitBtn').disabled = false;
+        document.getElementById('topBtn').disabled = false;
 
     } catch (err) {
         console.error(err);
@@ -52,38 +57,45 @@ function buildData() {
         const region =
             (row['Регион'] || '').trim();
 
-        // строки без судьи пропускаем
-        if (!judge) {
+        if (!judge && !defendant) {
             continue;
         }
 
-        // считаем количество дел
+        const judgeName =
+            judge || 'Неизвестный судья';
+
         judgeCases.set(
-            judge,
-            (judgeCases.get(judge) || 0) + 1
+            judgeName,
+            (judgeCases.get(judgeName) || 0) + 1
         );
 
-        // создаём судью
-        if (!judges[judge]) {
-            judges[judge] = {
-                name: judge,
+        if (!judges[judgeName]) {
+            judges[judgeName] = {
+                name: judgeName,
                 cases: [],
                 defendants: new Set()
             };
         }
 
-        judges[judge].cases.push({
-            defendant,
+        const defendants = defendant
+            ? defendant
+                .split(',')
+                .map(x => x.trim())
+                .filter(Boolean)
+            : [];
+
+        judges[judgeName].cases.push({
+            defendants,
             article,
             city,
             region
         });
 
-        if (defendant) {
-            judges[judge]
+        defendants.forEach(d => {
+            judges[judgeName]
                 .defendants
-                .add(defendant);
-        }
+                .add(d);
+        });
     }
 
     console.log(
@@ -92,40 +104,9 @@ function buildData() {
     );
 }
 
-function getTopJudges(limit = 5) {
-    return [...judgeCases.entries()]
-        .sort((a, b) => {
-            // сначала по количеству дел
-            if (b[1] !== a[1]) {
-                return b[1] - a[1];
-            }
-
-            // потом по алфавиту
-            return a[0].localeCompare(
-                b[0],
-                'ru'
-            );
-        })
-        .slice(0, limit);
-}
-
-function updateTop5() {
-    const top5 = getTopJudges();
-
-    console.log('ТОП-5 судей');
-
-    top5.forEach(([judge, count]) => {
-        console.log(
-            `${judge}: ${count}`
-        );
-    });
-}
-
 function buildArticleList() {
     const select =
         document.getElementById('articleInput');
-
-    if (!select) return;
 
     const articles =
         [...new Set(
@@ -155,41 +136,110 @@ function buildArticleList() {
     });
 }
 
-function findJudge(name) {
-    return judges[name] || null;
-}
-
-function searchJudge(name) {
-    const judge = findJudge(name);
-
-    if (!judge) {
-        console.log('Не найден');
-        return;
-    }
-
-    console.log(judge);
-}
-
-function searchDefendant(name) {
-    const result = [];
-
-    for (const judgeName in judges) {
-        const judge = judges[judgeName];
-
-        for (const c of judge.cases) {
-            if (
-                c.defendant &&
-                c.defendant
-                    .toLowerCase()
-                    .includes(name.toLowerCase())
-            ) {
-                result.push({
-                    judge: judgeName,
-                    ...c
-                });
+function getTopJudges(limit = 5) {
+    return [...judgeCases.entries()]
+        .sort((a, b) => {
+            if (b[1] !== a[1]) {
+                return b[1] - a[1];
             }
-        }
-    }
 
-    return result;
+            return a[0]
+                .localeCompare(
+                    b[0],
+                    'ru'
+                );
+        })
+        .slice(0, limit);
+}
+
+document
+    .getElementById('topBtn')
+    .addEventListener('click', () => {
+
+        const top5 =
+            getTopJudges();
+
+        const text =
+            top5
+                .map(
+                    ([judge, count], i) =>
+                        `${i + 1}. ${judge} — ${count}`
+                )
+                .join('\n');
+
+        alert(text);
+    });
+
+document
+    .getElementById('submitBtn')
+    .addEventListener('click', () => {
+
+        const judgeName =
+            document
+                .getElementById('judgeInput')
+                .value
+                .trim();
+
+        if (!judgeName) {
+            return;
+        }
+
+        const judge =
+            judges[judgeName];
+
+        if (!judge) {
+            alert('Судья не найден');
+            return;
+        }
+
+        renderJudge(judge);
+    });
+
+function renderJudge(judge) {
+    const container =
+        document.getElementById(
+            'tree-container'
+        );
+
+    container.innerHTML = '';
+
+    const title =
+        document.createElement('h2');
+
+    title.textContent =
+        `${judge.name} (${judge.cases.length} дел)`;
+
+    container.appendChild(title);
+
+    judge.cases.forEach(c => {
+        const div =
+            document.createElement('div');
+
+        div.className = 'case';
+
+        div.innerHTML = `
+            <div>
+                <b>Подсудимые:</b>
+                ${c.defendants.join(', ') || 'Не указаны'}
+            </div>
+
+            <div>
+                <b>Статья:</b>
+                ${c.article}
+            </div>
+
+            <div>
+                <b>Город:</b>
+                ${c.city}
+            </div>
+
+            <div>
+                <b>Регион:</b>
+                ${c.region}
+            </div>
+            <hr>
+        `;
+
+        container.appendChild(div);
+    });
 }
