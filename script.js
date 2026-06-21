@@ -148,11 +148,9 @@ function renderGraph(filteredData) {
         const city = row[2];
         const region = row[3];
         const defendant = row[4];
-        const prosecutor = row[5];
 
         const judgePhoto = row[6];
         const defendantPhoto = row[7];
-        const prosecutorPhoto = row[8];
 
         if (!judgeMap[judge]) {
 
@@ -165,6 +163,80 @@ function renderGraph(filteredData) {
             };
         }
 
+        judgeMap[judge].cases.push({
+
+            defendant,
+            article,
+            defendantPhoto
+        });
+    });
+
+    Object.entries(judgeMap)
+        .forEach(([judge, data]) => {
+
+            const wrapper =
+                document.createElement("div");
+
+            wrapper.className =
+                "judge-wrapper";
+
+            wrapper.innerHTML = `
+
+                <div class="judge-card">
+
+                    <img
+                        src="${data.photo || ''}"
+                        onerror="this.src='https://placehold.co/150x150'">
+
+                    <h2>${judge}</h2>
+
+                    <div class="judge-region">
+                        ${data.region || ""}
+                    </div>
+
+                    <div class="judge-count">
+                        ${data.cases.length} дел
+                    </div>
+
+                </div>
+
+                <div class="defendants-grid"></div>
+
+            `;
+
+            const grid =
+                wrapper.querySelector(".defendants-grid");
+
+            data.cases.forEach(item => {
+
+                const card =
+                    document.createElement("div");
+
+                card.className =
+                    "defendant-card";
+
+                card.innerHTML = `
+
+                    <img
+                        src="${item.defendantPhoto || ''}"
+                        onerror="this.src='https://placehold.co/120x120'">
+
+                    <div class="defendant-name">
+                        ${item.defendant}
+                    </div>
+
+                    <div class="defendant-article">
+                        ${item.article || ""}
+                    </div>
+
+                `;
+
+                grid.appendChild(card);
+            });
+
+            container.appendChild(wrapper);
+        });
+}
         judgeMap[judge].cases.push({
 
             article,
