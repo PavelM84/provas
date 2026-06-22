@@ -10,10 +10,12 @@ async function loadData() {
 
         const response = await fetch(DATA_URL);
 
-        allData = (await response.json())
-        .filter(row =>
-        row.judge &&
-        row.defendant
+allData = (await response.json())
+.filter(row =>
+    row.judge &&
+    row.defendant &&
+    row.judge.trim() !== "" &&
+    row.defendant.trim() !== ""
 );
 
         console.log("Загружено записей:", allData.length);
@@ -185,27 +187,23 @@ function renderGraph(data) {
 
             block.innerHTML = `
 
-                <div class="judge-card">
+<div class="judge-card">
 
-                    <img
-                        src="${info.photo || ''}"
-                        onerror="this.src='https://placehold.co/150x150'">
+    <img
+        src="${info.photo || ''}"
+        onerror="this.src='https://placehold.co/150x150'">
 
-                    <h2>${judge}</h2>
+    <h2>${judge}</h2>
 
-                    <div class="judge-region">
-                        ${info.region || ""}
-                    </div>
+    <div class="judge-count">
+        Дел: ${info.cases.length}
+    </div>
 
-                    <div class="judge-count">
-                        Дел: ${info.cases.length}
-                    </div>
+</div>
 
-                </div>
+<div class="defendants-grid"></div>
 
-                <div class="defendants-grid"></div>
-
-            `;
+`;
 
             const grid =
                 block.querySelector(".defendants-grid");
