@@ -1,5 +1,4 @@
-const CSV_URL =
-"https://docs.google.com/spreadsheets/d/1QboKxJA_rkU6HMy-L8Fm399O5qLNWgTNa_0VpP1slgM/gviz/tq?tqx=out:csv";
+const DATA_URL = "./data.json";
 
 let allData = [];
 
@@ -9,14 +8,11 @@ async function loadData() {
 
     try {
 
-        const response = await fetch(CSV_URL);
-        const csvText = await response.text();
+        const response = await fetch(DATA_URL);
 
-        const rows = parseCSV(csvText);
+        allData = await response.json();
 
-        allData = rows.slice(1);
-
-        console.log("Загружено строк:", allData.length);
+        console.log("Загружено записей:", allData.length);
 
         setupAutocomplete();
         fillArticleSelect();
@@ -28,55 +24,11 @@ async function loadData() {
 
         console.error(err);
 
-        alert("Не удалось загрузить данные из Google Sheets");
+        alert("Не удалось загрузить data.json");
     }
 }
 
-function parseCSV(text) {
 
-    const rows = [];
-    let row = [];
-    let cell = "";
-    let inQuotes = false;
-
-    for (let i = 0; i < text.length; i++) {
-
-        const char = text[i];
-
-        if (char === '"') {
-
-            inQuotes = !inQuotes;
-
-        } else if (char === "," && !inQuotes) {
-
-            row.push(cell);
-            cell = "";
-
-        } else if ((char === "\n" || char === "\r") && !inQuotes) {
-
-            if (cell || row.length) {
-
-                row.push(cell);
-                rows.push(row);
-
-                row = [];
-                cell = "";
-            }
-
-        } else {
-
-            cell += char;
-        }
-    }
-
-    if (cell || row.length) {
-
-        row.push(cell);
-        rows.push(row);
-    }
-
-    return rows;
-}
 
 function fillArticleSelect() {
 
@@ -86,7 +38,7 @@ function fillArticleSelect() {
     const articles =
         [...new Set(
             allData
-            .map(row => row[1])
+            .map(row => row.article)
             .filter(Boolean)
         )]
         .sort();
@@ -172,14 +124,14 @@ function renderGraph(data) {
 
     data.forEach(row => {
 
-        const judge = row[0];
-        const article = row[1];
-        const city = row[2];
-        const region = row[3];
-        const defendant = row[4];
+        const judge = row.judge;
+        const article = row.article;
+        const city = row.city;
+        const region = row.region;
+        const defendant = row.defendant;
 
-        const judgePhoto = row[6];
-        const defendantPhoto = row[7];
+        const judgePhoto = row.judgePhoto;
+        const defendantPhoto = row.defendantPhoto;
 
         if (!judges[judge]) {
 
@@ -287,13 +239,13 @@ submitBtn.onclick = () => {
 
             const articleOk =
                 !article ||
-                (row[1] || "")
+                (row.article || "")
                     .toLowerCase()
                     .includes(article);
 
             return (
-                row[0] &&
-                row[0].toLowerCase().includes(judge) &&
+                row.judge &&
+                row.judge.toLowerCase().includes(judge) &&
                 articleOk
             );
         });
@@ -307,11 +259,11 @@ submitBtn.onclick = () => {
 
                 allData
                     .filter(row =>
-                        (row[4] || "")
+                        (row.defendant || "")
                             .toLowerCase()
                             .includes(defendant)
                     )
-                    .map(row => row[0])
+                    .map(row => row.judge)
 
             )];
 
@@ -320,12 +272,12 @@ submitBtn.onclick = () => {
 
                 const articleOk =
                     !article ||
-                    (row[1] || "")
+                    (row.article || "")
                         .toLowerCase()
                         .includes(article);
 
                 return (
-                    judgesFound.includes(row[0]) &&
+                    judgesFound.includes(row.judge) &&
                     articleOk
                 );
             });
@@ -336,7 +288,7 @@ submitBtn.onclick = () => {
 
         filtered =
             allData.filter(row =>
-                (row[1] || "")
+                (row.article || "")
                     .toLowerCase()
                     .includes(article)
             );
@@ -350,7 +302,7 @@ topBtn.onclick = () => {
 
     allData.forEach(row => {
 
-        const judge = row[0];
+        const judge = row.judge;
 
         counts[judge] =
             (counts[judge] || 0) + 1;
@@ -364,6 +316,6 @@ topBtn.onclick = () => {
 
     renderGraph(
         allData.filter(row =>
-            top5.includes(row[0]))
+            top5.includes(row.judge))
     );
 };
