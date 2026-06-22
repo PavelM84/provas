@@ -133,6 +133,10 @@ function renderGraph(data) {
 
     data.forEach(row => {
 
+    if (!row.judge) return;
+
+    if (row.judge.length < 5) return;
+
         const judge = row.judge;
         const article = row.article;
         const city = row.city;
@@ -162,6 +166,11 @@ function renderGraph(data) {
     });
 
     Object.entries(judges)
+    .sort(
+    (a,b) =>
+    b[1].cases.length -
+    a[1].cases.length
+)    
         .forEach(([judge, info]) => {
 
             const block =
@@ -307,15 +316,46 @@ submitBtn.onclick = () => {
 };
 topBtn.onclick = () => {
 
+    const article =
+        articleInput.value.trim().toLowerCase();
+
+    let sourceData = allData;
+
+    if (article) {
+
+        sourceData =
+            allData.filter(row =>
+                (row.article || "")
+                    .toLowerCase()
+                    .includes(article)
+            );
+    }
+
     const counts = {};
 
-    allData.forEach(row => {
+    sourceData.forEach(row => {
 
         const judge = row.judge;
+
+        if (!judge) return;
 
         counts[judge] =
             (counts[judge] || 0) + 1;
     });
+
+    const top5 =
+        Object.entries(counts)
+        .sort((a,b) => b[1] - a[1])
+        .slice(0,5)
+        .map(x => x[0]);
+
+    const result =
+        sourceData.filter(row =>
+            top5.includes(row.judge)
+        );
+
+    renderGraph(result);
+};
 
     const top5 =
         Object.entries(counts)
