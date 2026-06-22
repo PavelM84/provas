@@ -35,11 +35,14 @@ function fillArticleSelect() {
     const select =
         document.getElementById("articleInput");
 
+    select.innerHTML =
+        '<option value="">Все статьи</option>';
+
     const articles =
         [...new Set(
             allData
-            .map(row => row.article)
-            .filter(Boolean)
+                .map(row => row.article)
+                .filter(Boolean)
         )]
         .sort();
 
@@ -55,12 +58,13 @@ function fillArticleSelect() {
     });
 }
 
+
 function setupAutocomplete() {
 
     const suggestions =
         document.getElementById("suggestions");
 
-    function setup(inputId, columnIndex) {
+    function setup(inputId, fieldName) {
 
         const input =
             document.getElementById(inputId);
@@ -68,7 +72,7 @@ function setupAutocomplete() {
         input.addEventListener("input", () => {
 
             const value =
-                input.value.toLowerCase();
+                input.value.trim().toLowerCase();
 
             if (!value) {
 
@@ -80,11 +84,15 @@ function setupAutocomplete() {
 
             const list =
                 [...new Set(
-                    allData.map(row => row[columnName])
+
+                    allData
+                        .map(row => row[fieldName])
+                        .filter(Boolean)
+
                 )]
                 .filter(item =>
-                    item &&
-                    item.toLowerCase().includes(value))
+                    item.toLowerCase().includes(value)
+                )
                 .slice(0, 10);
 
             suggestions.innerHTML =
@@ -92,9 +100,10 @@ function setupAutocomplete() {
                     `<div class="suggestion-item">${item}</div>`
                 ).join("");
 
-            suggestions.style.display = "block";
+            suggestions.style.display =
+                list.length ? "block" : "none";
 
-            suggestions.querySelectorAll("div")
+            suggestions.querySelectorAll(".suggestion-item")
                 .forEach(div => {
 
                     div.onclick = () => {
