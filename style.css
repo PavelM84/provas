@@ -218,3 +218,20 @@ body {
     font-size: 14px;
 }
 
+.site-title{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:15px;
+
+    font-size:42px;
+    font-weight:700;
+
+    margin-bottom:20px;
+}
+
+.site-title img{
+    width:64px;
+    height:64px;
+    object-fit:contain;
+}
