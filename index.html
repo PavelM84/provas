@@ -1,28 +1,56 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8" />
-  <title>Связи Судей и Подсудимых</title>
-  <link rel="stylesheet" href="style.css" />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Кто кого судит</title>
+
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <section id="intro">
+
+<section id="intro">
     <h1>Кто кого судит</h1>
-    <p>Проект визуализирует связи между судьями, подсудимыми и прокурорами на основе открытых данных. Здесь можно узнать, кто кого судил, кто чаще других выносит приговоры, и многое другое.</p>
-  </section>
 
-  <section id="search">
-    <input type="text" id="judgeInput" placeholder="Введите фамилию судьи..." autocomplete="off" />
-    <input type="text" id="defendantInput" placeholder="Введите фамилию подсудимого..." autocomplete="off" />
-    <button id="submitBtn" disabled>Мы знаем</button>
-    <button id="topBtn" disabled>TOP 5</button>
+    <p>
+        Проект визуализирует связи между судьями, подсудимыми и прокурорами.
+        Данные автоматически загружаются из Google Таблицы.
+    </p>
+</section>
+
+<section id="search">
+
+    <input
+        type="text"
+        id="judgeInput"
+        placeholder="Фамилия судьи"
+        autocomplete="off">
+
+    <input
+        type="text"
+        id="defendantInput"
+        placeholder="Фамилия подсудимого"
+        autocomplete="off">
+
+<select id="articleInput">
+    <option value="">Все статьи</option>
+</select>
+
+    <button id="submitBtn" disabled>
+        Мы знаем
+    </button>
+
+    <button id="topBtn" disabled>
+        TOP 5
+    </button>
+
     <div id="suggestions"></div>
-  </section>
 
-  <section id="tree-container"></section>
+</section>
 
- 
-  
-  <script src="script.js"></script>
+<section id="tree-container"></section>
+
+<script src="script.js"></script>
+
 </body>
 </html>
