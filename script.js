@@ -80,7 +80,7 @@ function setupAutocomplete() {
 
             const list =
                 [...new Set(
-                    allData.map(row => row[columnIndex])
+                    allData.map(row => row[columnName])
                 )]
                 .filter(item =>
                     item &&
@@ -109,8 +109,8 @@ function setupAutocomplete() {
         });
     }
 
-    setup("judgeInput", 0);
-    setup("defendantInput", 4);
+    setup("judgeInput", "judge");
+    setup("defendantInput", "defendant");
 }
 
 function renderGraph(data) {
