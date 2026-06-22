@@ -10,7 +10,11 @@ async function loadData() {
 
         const response = await fetch(DATA_URL);
 
-        allData = await response.json();
+        allData = (await response.json())
+        .filter(row =>
+        row.judge &&
+        row.defendant
+);
 
         console.log("Загружено записей:", allData.length);
 
