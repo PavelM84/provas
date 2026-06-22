@@ -360,15 +360,3 @@ topBtn.onclick = () => {
 
     renderGraph(result);
 };
-
-    const top5 =
-        Object.entries(counts)
-        .sort((a,b) => b[1]-a[1])
-        .slice(0,5)
-        .map(x => x[0]);
-
-    renderGraph(
-        allData.filter(row =>
-            top5.includes(row.judge))
-    );
-};
