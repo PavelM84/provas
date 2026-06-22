@@ -1,369 +1,206 @@
 const CSV_URL =
-"https://docs.google.com/spreadsheets/d/1QboKxJA_rkU6HMy-L8Fm399O5qLNWgTNa_0VpP1slgM/gviz/tq?tqx=out:csv";
+  "https://docs.google.com/spreadsheets/d/1QboKxJA_rkU6HMy-L8Fm399O5qLNWgTNa_0VpP1slgM/gviz/tq?tqx=out:csv";
 
 let allData = [];
 
 window.addEventListener("load", loadData);
 
 async function loadData() {
+  try {
+    const response = await fetch(CSV_URL);
+    const csvText = await response.text();
 
-    try {
+    const rows = parseCSV(csvText);
 
-        const response = await fetch(CSV_URL);
-        const csvText = await response.text();
+    // убираем заголовок
+    allData = rows.slice(1);
 
-        const rows = parseCSV(csvText);
+    console.log("Загружено строк:", allData.length);
 
-        allData = rows.slice(1);
+    setupAutocomplete(allData);
 
-        console.log("Загружено строк:", allData.length);
+    document.getElementById("submitBtn").disabled = false;
+    document.getElementById("topBtn").disabled = false;
 
-        setupAutocomplete();
-        fillArticleSelect();
-
-        submitBtn.disabled = false;
-        topBtn.disabled = false;
-
-    } catch (err) {
-
-        console.error(err);
-
-        alert("Не удалось загрузить данные из Google Sheets");
-    }
+  } catch (err) {
+    console.error(err);
+    alert("Ошибка загрузки данных");
+  }
 }
 
 function parseCSV(text) {
+  const rows = [];
+  let row = [];
+  let cell = "";
+  let inQuotes = false;
 
-    const rows = [];
-    let row = [];
-    let cell = "";
-    let inQuotes = false;
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
 
-    for (let i = 0; i < text.length; i++) {
-
-        const char = text[i];
-
-        if (char === '"') {
-
-            inQuotes = !inQuotes;
-
-        } else if (char === "," && !inQuotes) {
-
-            row.push(cell);
-            cell = "";
-
-        } else if ((char === "\n" || char === "\r") && !inQuotes) {
-
-            if (cell || row.length) {
-
-                row.push(cell);
-                rows.push(row);
-
-                row = [];
-                cell = "";
-            }
-
-        } else {
-
-            cell += char;
-        }
-    }
-
-    if (cell || row.length) {
-
+    if (char === '"') {
+      inQuotes = !inQuotes;
+    } else if (char === "," && !inQuotes) {
+      row.push(cell);
+      cell = "";
+    } else if ((char === "\n" || char === "\r") && !inQuotes) {
+      if (cell || row.length) {
         row.push(cell);
         rows.push(row);
+        row = [];
+        cell = "";
+      }
+    } else {
+      cell += char;
     }
+  }
 
-    return rows;
+  if (cell || row.length) {
+    row.push(cell);
+    rows.push(row);
+  }
+
+  return rows;
 }
 
-function fillArticleSelect() {
+function setupAutocomplete(data) {
+  const judgeInput = document.getElementById("judgeInput");
+  const defendantInput = document.getElementById("defendantInput");
+  const suggestions = document.getElementById("suggestions");
 
-    const select =
-        document.getElementById("articleInput");
+  function setup(input, index) {
+    input.addEventListener("input", () => {
+      const value = input.value.toLowerCase();
 
-    const articles =
-        [...new Set(
-            allData
-            .map(row => row[1])
-            .filter(Boolean)
-        )]
-        .sort();
+      if (!value) {
+        suggestions.innerHTML = "";
+        suggestions.style.display = "none";
+        return;
+      }
 
-    articles.forEach(article => {
+      const list = [...new Set(data.map(row => row[index]))]
+        .filter(name => name && name.toLowerCase().includes(value))
+        .slice(0, 10);
 
-        const option =
-            document.createElement("option");
+      suggestions.innerHTML = list
+        .map(name => `<div class="suggestion-item">${name}</div>`)
+        .join("");
 
-        option.value = article;
-        option.textContent = article;
+      suggestions.style.display = "block";
 
-        select.appendChild(option);
+      suggestions.querySelectorAll(".suggestion-item").forEach(div => {
+        div.onclick = () => {
+          input.value = div.textContent;
+          suggestions.innerHTML = "";
+          suggestions.style.display = "none";
+        };
+      });
     });
+  }
+
+  setup(judgeInput, 0);
+  setup(defendantInput, 2);
 }
 
-function setupAutocomplete() {
+function renderGraph(filteredData) {
+  const container = document.getElementById("tree-container");
+  container.innerHTML = "";
 
-    const suggestions =
-        document.getElementById("suggestions");
+  const judgeMap = {};
 
-    function setup(inputId, columnIndex) {
+  filteredData.forEach(
+    ([judge, judgePhoto, defendant, defPhoto, prosecutor, prosPhoto]) => {
+      if (!judgeMap[judge]) {
+        judgeMap[judge] = {
+          photo: judgePhoto,
+          cases: []
+        };
+      }
 
-        const input =
-            document.getElementById(inputId);
-
-        input.addEventListener("input", () => {
-
-            const value =
-                input.value.toLowerCase();
-
-            if (!value) {
-
-                suggestions.innerHTML = "";
-                suggestions.style.display = "none";
-
-                return;
-            }
-
-            const list =
-                [...new Set(
-                    allData.map(row => row[columnIndex])
-                )]
-                .filter(item =>
-                    item &&
-                    item.toLowerCase().includes(value))
-                .slice(0, 10);
-
-            suggestions.innerHTML =
-                list.map(item =>
-                    `<div class="suggestion-item">${item}</div>`
-                ).join("");
-
-            suggestions.style.display = "block";
-
-            suggestions.querySelectorAll("div")
-                .forEach(div => {
-
-                    div.onclick = () => {
-
-                        input.value =
-                            div.textContent;
-
-                        suggestions.innerHTML = "";
-                        suggestions.style.display = "none";
-                    };
-                });
-        });
+      judgeMap[judge].cases.push({
+        defendant,
+        defPhoto,
+        prosecutor,
+        prosPhoto
+      });
     }
+  );
 
-    setup("judgeInput", 0);
-    setup("defendantInput", 4);
-}
+  Object.entries(judgeMap).forEach(([judge, data]) => {
+    const judgeBlock = document.createElement("div");
+    judgeBlock.className = "tree-block";
 
-function renderGraph(data) {
+    judgeBlock.innerHTML = `
+      <div class="tree-node">
+        <img src="${data.photo}" onerror="this.src='https://placehold.co/120x120'">
+        <div class="label">${judge}</div>
+        <div class="count">${data.cases.length} дел</div>
+      </div>
+      <div class="connect-line"></div>
+    `;
 
-    const container =
-        document.getElementById("tree-container");
+    const subtree = document.createElement("div");
+    subtree.className = "subtree";
 
-    container.innerHTML = "";
+    data.cases.forEach(item => {
+      const block = document.createElement("div");
+      block.className = "tree-block";
 
-    const judges = {};
+      block.innerHTML = `
+        <div class="tree-node">
+          <img src="${item.defPhoto}" onerror="this.src='https://placehold.co/120x120'">
+          <div class="label">${item.defendant}</div>
+        </div>
 
-    data.forEach(row => {
+        <div class="connect-line"></div>
 
-        const judge = row[0];
-        const article = row[1];
-        const city = row[2];
-        const region = row[3];
-        const defendant = row[4];
+        <div class="tree-node">
+          <img src="${item.prosPhoto}" onerror="this.src='https://placehold.co/120x120'">
+          <div class="label">${item.prosecutor}</div>
+        </div>
+      `;
 
-        const judgePhoto = row[6];
-        const defendantPhoto = row[7];
-
-        if (!judges[judge]) {
-
-            judges[judge] = {
-
-                region,
-                city,
-                photo: judgePhoto,
-                cases: []
-            };
-        }
-
-        judges[judge].cases.push({
-
-            defendant,
-            article,
-            photo: defendantPhoto
-        });
+      subtree.appendChild(block);
     });
 
-    Object.entries(judges)
-        .forEach(([judge, info]) => {
-
-            const block =
-                document.createElement("div");
-
-            block.className =
-                "judge-wrapper";
-
-            block.innerHTML = `
-
-                <div class="judge-card">
-
-                    <img
-                        src="${info.photo || ''}"
-                        onerror="this.src='https://placehold.co/150x150'">
-
-                    <h2>${judge}</h2>
-
-                    <div class="judge-region">
-                        ${info.region || ""}
-                    </div>
-
-                    <div class="judge-count">
-                        Дел: ${info.cases.length}
-                    </div>
-
-                </div>
-
-                <div class="defendants-grid"></div>
-
-            `;
-
-            const grid =
-                block.querySelector(".defendants-grid");
-
-            info.cases.forEach(item => {
-
-                const card =
-                    document.createElement("div");
-
-                card.className =
-                    "defendant-card";
-
-                card.innerHTML = `
-
-                    <img
-                        src="${item.photo || ''}"
-                        onerror="this.src='https://placehold.co/120x120'">
-
-                    <div class="defendant-name">
-                        ${item.defendant || ""}
-                    </div>
-
-                    <div class="defendant-article">
-                        ${item.article || ""}
-                    </div>
-
-                `;
-
-                grid.appendChild(card);
-            });
-
-            container.appendChild(block);
-        });
+    judgeBlock.appendChild(subtree);
+    container.appendChild(judgeBlock);
+  });
 }
 
-submitBtn.onclick = () => {
+document.getElementById("submitBtn").onclick = () => {
+  const judge = document.getElementById("judgeInput").value.trim();
+  const defendant = document.getElementById("defendantInput").value.trim();
 
-    const judge =
-        judgeInput.value.trim().toLowerCase();
+  let filtered = [];
 
-    const defendant =
-        defendantInput.value.trim().toLowerCase();
+  if (judge) {
+    filtered = allData.filter(row => row[0] === judge);
+  } else if (defendant) {
+    const match = allData.find(row => row[2] === defendant);
 
-    const article =
-        articleInput.value.trim().toLowerCase();
-
-    let filtered = [];
-
-    // поиск по судье
-    if (judge) {
-
-        filtered = allData.filter(row => {
-
-            const articleOk =
-                !article ||
-                (row[1] || "")
-                    .toLowerCase()
-                    .includes(article);
-
-            return (
-                row[0] &&
-                row[0].toLowerCase().includes(judge) &&
-                articleOk
-            );
-        });
+    if (match) {
+      const judgeName = match[0];
+      filtered = allData.filter(row => row[0] === judgeName);
     }
+  }
 
-    // поиск по подсудимому
-    else if (defendant) {
-
-        const judgesFound =
-            [...new Set(
-
-                allData
-                    .filter(row =>
-                        (row[4] || "")
-                            .toLowerCase()
-                            .includes(defendant)
-                    )
-                    .map(row => row[0])
-
-            )];
-
-        filtered =
-            allData.filter(row => {
-
-                const articleOk =
-                    !article ||
-                    (row[1] || "")
-                        .toLowerCase()
-                        .includes(article);
-
-                return (
-                    judgesFound.includes(row[0]) &&
-                    articleOk
-                );
-            });
-    }
-
-    // только статья
-    else if (article) {
-
-        filtered =
-            allData.filter(row =>
-                (row[1] || "")
-                    .toLowerCase()
-                    .includes(article)
-            );
-    }
-
-    renderGraph(filtered);
+  renderGraph(filtered);
 };
-topBtn.onclick = () => {
 
-    const counts = {};
+document.getElementById("topBtn").onclick = () => {
+  const counts = {};
 
-    allData.forEach(row => {
+  allData.forEach(row => {
+    const judge = row[0];
+    counts[judge] = (counts[judge] || 0) + 1;
+  });
 
-        const judge = row[0];
+  const top5 = Object.entries(counts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(item => item[0]);
 
-        counts[judge] =
-            (counts[judge] || 0) + 1;
-    });
+  const filtered = allData.filter(row => top5.includes(row[0]));
 
-    const top5 =
-        Object.entries(counts)
-        .sort((a,b) => b[1]-a[1])
-        .slice(0,5)
-        .map(x => x[0]);
-
-    renderGraph(
-        allData.filter(row =>
-            top5.includes(row[0]))
-    );
+  renderGraph(filtered);
 };
